@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model alert_statuses {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model alert_types {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model alerts {
+  id              Int      @id @default(autoincrement())
+  description     String   @db.Text
+  alert_datetime  DateTime @db.DateTime(0)
+  book_id         Int      @db.UnsignedInt
+  alert_type_id   Int      @db.UnsignedInt
+  alert_status_id Int      @db.UnsignedInt
+
+  @@index([alert_status_id], map: "alert_status_id")
+  @@index([alert_type_id], map: "alert_type_id")
+  @@index([book_id], map: "book_id")
+}
+
+model authors {
+  id   Int    @id @default(autoincrement())
+  name String
+}
+
+model books {
+  id               Int      @id @default(autoincrement())
+  title            String
+  summary          String   @db.Text
+  editor           String
+  publication_date DateTime @db.Date
+  ean              String   @unique(map: "ean") @db.VarChar(13)
+  isbn             String   @unique(map: "isbn") @db.VarChar(13)
+  price            Decimal  @db.Decimal(10, 2)
+  category_id      Int      @db.UnsignedInt
+  qty_reserve      Int      @default(0) @db.UnsignedInt
+  qty_shelf        Int      @default(0) @db.UnsignedInt
+  alert_threshold  Int      @default(2) @db.UnsignedInt
+  is_active        Boolean  @default(true)
+  created_at       DateTime @default(now()) @db.DateTime(0)
+  updated_at       DateTime @default(now()) @db.DateTime(0)
+
+  @@index([category_id], map: "category_id")
+}
+
+model books_authors {
+  id        Int @id @default(autoincrement())
+  book_id   Int @db.UnsignedInt
+  author_id Int @db.UnsignedInt
+
+  @@unique([book_id, author_id], map: "book_id")
+  @@index([author_id], map: "author_id")
+}
+
+model categories {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model delivery_statuses {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model deliveries {
+  id                 Int      @id @default(autoincrement())
+  type               String
+  delivery_status_id Int      @db.UnsignedInt
+  delivery_datetime  DateTime @db.DateTime(0)
+
+  @@index([delivery_status_id], map: "delivery_status_id")
+}
+
+model order_statuses {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model orders {
+  id              Int      @id @default(autoincrement())
+  order_datetime  DateTime @db.DateTime(0)
+  delivery_id     Int      @db.UnsignedInt
+  user_id         Int      @db.UnsignedInt
+  order_status_id Int      @db.UnsignedInt
+
+  @@index([delivery_id], map: "delivery_id")
+  @@index([order_status_id], map: "order_status_id")
+  @@index([user_id], map: "user_id")
+}
+
+model orders_lines {
+  id          Int @id @default(autoincrement())
+  order_id    Int @db.UnsignedInt
+  book_id     Int @db.UnsignedInt
+  supplier_id Int @db.UnsignedInt
+  qty         Int @db.UnsignedInt
+
+  @@index([book_id], map: "book_id")
+  @@index([order_id], map: "order_id")
+  @@index([supplier_id], map: "supplier_id")
+}
+
+model suppliers {
+  id   Int    @id @default(autoincrement())
+  name String @unique(map: "name")
+}
+
+model users {
+  id       Int    @id @default(autoincrement())
+  username String @db.VarChar(100)
+  email    String @unique(map: "email") @db.VarChar(100)
+  password String
+}
+
+model simulation_runs {
+  id         Int       @id @default(autoincrement())
+  started_at DateTime  @default(now()) @db.DateTime(0)
+  ended_at   DateTime? @db.DateTime(0)
+}
+
+model simulation_events {
+  id                Int      @id @default(autoincrement())
+  simulation_run_id Int      @db.UnsignedInt
+  type              String
+  message           String   @db.Text
+  book_id           Int?     @db.UnsignedInt
+  metadata          String?  @db.Text
+  created_at        DateTime @default(now()) @db.DateTime(0)
+
+  @@index([simulation_run_id], map: "simulation_run_id")
+  @@index([book_id], map: "book_id")
+}
