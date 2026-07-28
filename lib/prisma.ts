@@ -20,8 +20,26 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+/** True if the cached client exposes the current schema models. */
+function isClientUpToDate(client: PrismaClient): boolean {
+  // After `prisma generate`, HMR can keep a stale PrismaClient on globalThis.
+  return typeof (client as { sessions?: unknown }).sessions !== "undefined";
 }
+
+function getPrismaClient(): PrismaClient {
+  const cached = globalForPrisma.prisma;
+
+  if (cached && isClientUpToDate(cached)) {
+    return cached;
+  }
+
+  const client = createPrismaClient();
+
+  if (process.env.NODE_ENV !== "production") {
+    globalForPrisma.prisma = client;
+  }
+
+  return client;
+}
+
+export const prisma = getPrismaClient();

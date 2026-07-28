@@ -10,10 +10,15 @@ import {
   categoriesPublicSelect,
   type CategoryPublic,
 } from "@/services/categories/types";
+import {
+  formatsPublicSelect,
+  type FormatPublic,
+} from "@/services/formats/types";
 
 import {
   BookPublic,
   bookPublicSelect,
+  type CreateBookInput,
   type BookWithAuthors,
   type ListBooksOptions,
   type UpdateBookInput,
@@ -26,6 +31,61 @@ type BookStockSnapshot = {
   qty_reserve: number;
   qty_shelf: number;
 };
+
+type GeneratedCreateBookFields = {
+  lore_code: string;
+  cote: string;
+  qty_reserve: number;
+  qty_shelf: number;
+};
+
+function parseSequenceFromLoreCode(loreCode: string): number {
+  const suffix = loreCode.split("-").pop() ?? "";
+  const sequence = parseInt(suffix, 10);
+  return Number.isFinite(sequence) ? sequence : 0;
+}
+
+async function generateCreateBookFields(
+  _input: CreateBookInput,
+  _tx: TransactionClient = prisma,
+): Promise<GeneratedCreateBookFields> {
+  const [category, format, categoryBooks] = await Promise.all([
+    _tx.categories.findUnique({
+      where: { id: _input.category_id },
+      select: { id: true, code: true },
+    }),
+    _tx.formats.findUnique({
+      where: { id: _input.format_id },
+      select: { id: true, code: true },
+    }),
+    _tx.books.findMany({
+      where: { category_id: _input.category_id },
+      select: { lore_code: true },
+    }),
+  ]);
+
+  if (!category) {
+    throw new AppError("VALIDATION_ERROR", "Category not found.", 400);
+  }
+
+  if (!format) {
+    throw new AppError("VALIDATION_ERROR", "Format not found.", 400);
+  }
+
+  const maxSequence = categoryBooks.reduce(
+    (max, book) => Math.max(max, parseSequenceFromLoreCode(book.lore_code)),
+    0,
+  );
+  const nextSequence = maxSequence + 1;
+  const sequenceSuffix = nextSequence.toString().padStart(3, "0");
+
+  return {
+    lore_code: `${category.code}-${sequenceSuffix}`,
+    cote: `${category.code}-${format.code}-${sequenceSuffix}`,
+    qty_reserve: 0,
+    qty_shelf: 0,
+  };
+}
 
 async function assertNoPendingSupplierOrderForBook(
   bookId: number,
@@ -97,6 +157,20 @@ async function assertCategoryExists(
   }
 }
 
+async function assertFormatExists(
+  formatId: number,
+  tx: TransactionClient = prisma,
+) {
+  const format = await tx.formats.findUnique({
+    where: { id: formatId },
+    select: { id: true },
+  });
+
+  if (!format) {
+    throw new AppError("VALIDATION_ERROR", "Format not found.", 400);
+  }
+}
+
 async function assertAuthorsExist(
   authorIds: number[],
   tx: TransactionClient = prisma,
@@ -121,6 +195,8 @@ function toBookUpdateData(input: UpdateBookInput): Prisma.booksUpdateInput {
   const data: Prisma.booksUpdateInput = {};
 
   if (input.title !== undefined) data.title = input.title;
+  if (input.lore_code !== undefined) data.lore_code = input.lore_code;
+  if (input.cote !== undefined) data.cote = input.cote;
   if (input.summary !== undefined) data.summary = input.summary;
   if (input.editor !== undefined) data.editor = input.editor;
   if (input.publication_date !== undefined) {
@@ -128,8 +204,20 @@ function toBookUpdateData(input: UpdateBookInput): Prisma.booksUpdateInput {
   }
   if (input.ean !== undefined) data.ean = input.ean;
   if (input.isbn !== undefined) data.isbn = input.isbn;
-  if (input.price !== undefined) data.price = input.price;
+  if (input.purchase_price !== undefined) {
+    data.purchase_price = input.purchase_price;
+  }
+  if (input.sale_price !== undefined) data.sale_price = input.sale_price;
+  if (input.rarity !== undefined) data.rarity = input.rarity;
+  if (input.cover_url !== undefined) data.cover_url = input.cover_url;
   if (input.category_id !== undefined) data.category_id = input.category_id;
+  if (input.format_id !== undefined) data.format_id = input.format_id;
+  if (input.series !== undefined) data.series = input.series;
+  if (input.volume !== undefined) data.volume = input.volume;
+  if (input.collection !== undefined) data.collection = input.collection;
+  if (input.supplier_available !== undefined) {
+    data.supplier_available = input.supplier_available;
+  }
   if (input.alert_threshold !== undefined) {
     data.alert_threshold = input.alert_threshold;
   }
@@ -201,29 +289,51 @@ async function fetchCategoriesByIds(
   return new Map(categories.map((category) => [category.id, category]));
 }
 
-/** Add the authors and category to the book. */
+async function fetchFormatsByIds(
+  formatIds: number[],
+  tx: TransactionClient = prisma,
+): Promise<Map<number, FormatPublic>> {
+  if (formatIds.length === 0) {
+    return new Map();
+  }
+
+  const uniqueIds = [...new Set(formatIds)];
+  const formats = await tx.formats.findMany({
+    where: { id: { in: uniqueIds } },
+    select: formatsPublicSelect,
+  });
+
+  return new Map(formats.map((format) => [format.id, format]));
+}
+
+/** Add the authors, category and format to the book. */
 function withRelations(
   book: BookPublic,
   authorsByBookId: Map<number, AuthorPublic[]>,
   categoriesById: Map<number, CategoryPublic>,
+  formatsById: Map<number, FormatPublic>,
 ): BookWithAuthors {
   return {
     ...book,
     authors: authorsByBookId.get(book.id) ?? [],
     category: categoriesById.get(book.category_id) ?? null,
+    format: formatsById.get(book.format_id) ?? null,
   };
 }
 
-/** Add the authors and category to the books. */
+/** Add the authors, category and format to the books. */
 function withRelationsMany(
   books: BookPublic[],
   authorsByBookId: Map<number, AuthorPublic[]>,
   categoriesById: Map<number, CategoryPublic>,
+  formatsById: Map<number, FormatPublic>,
 ): BookWithAuthors[] {
-  return books.map((book) => withRelations(book, authorsByBookId, categoriesById));
+  return books.map((book) =>
+    withRelations(book, authorsByBookId, categoriesById, formatsById),
+  );
 }
 
-/** Enrich the books with their authors and category. */
+/** Enrich the books with their authors, category and format. */
 async function enrichBooks(
   books: BookPublic[],
   tx: TransactionClient = prisma,
@@ -236,11 +346,15 @@ async function enrichBooks(
     books.map((book) => book.category_id),
     tx,
   );
+  const formatsById = await fetchFormatsByIds(
+    books.map((book) => book.format_id),
+    tx,
+  );
 
-  return withRelationsMany(books, authorsByBookId, categoriesById);
+  return withRelationsMany(books, authorsByBookId, categoriesById, formatsById);
 }
 
-/** Enrich the book with its authors and category. */
+/** Enrich the book with its authors, category and format. */
 async function enrichBook(
   book: BookPublic,
   tx: TransactionClient = prisma,
@@ -283,20 +397,32 @@ export async function createBook(body: unknown): Promise<BookWithAuthors> {
 
   return prisma.$transaction(async (tx) => {
     await assertCategoryExists(input.category_id, tx);
+    await assertFormatExists(input.format_id, tx);
     await assertAuthorsExist(input.author_ids, tx);
+    const generatedFields = await generateCreateBookFields(input, tx);
 
     const book = await tx.books.create({
       data: {
+        lore_code: generatedFields.lore_code,
+        cote: generatedFields.cote,
         title: input.title,
         summary: input.summary,
         editor: input.editor,
         publication_date: new Date(input.publication_date),
         ean: input.ean,
         isbn: input.isbn,
-        price: input.price,
+        purchase_price: input.purchase_price,
+        sale_price: input.sale_price,
+        rarity: input.rarity,
+        cover_url: input.cover_url,
         category_id: input.category_id,
-        qty_reserve: input.qty_reserve,
-        qty_shelf: input.qty_shelf,
+        format_id: input.format_id,
+        series: input.series,
+        volume: input.volume,
+        collection: input.collection,
+        supplier_available: input.supplier_available,
+        qty_reserve: generatedFields.qty_reserve,
+        qty_shelf: generatedFields.qty_shelf,
         alert_threshold: input.alert_threshold,
         is_active: input.is_active,
       },
@@ -334,6 +460,10 @@ export async function updateBook(
 
     if (input.category_id !== undefined) {
       await assertCategoryExists(input.category_id, tx);
+    }
+
+    if (input.format_id !== undefined) {
+      await assertFormatExists(input.format_id, tx);
     }
 
     if (input.author_ids !== undefined) {

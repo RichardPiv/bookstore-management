@@ -20,6 +20,19 @@ export async function getUserById(id: number): Promise<UserPublic | null> {
   });
 }
 
+/** Get a user with password hash by username (auth only — never expose in API). */
+export async function getUserWithPasswordByUsername(username: string) {
+  return prisma.users.findFirst({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      email: true,
+      password: true,
+    },
+  });
+}
+
 /** Create a user with hashed password. */
 export async function createUser(body: unknown): Promise<UserPublic> {
   const input = validateCreateUserInput(body);

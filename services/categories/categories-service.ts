@@ -27,7 +27,7 @@ export async function getCategoryById(
 export async function createCategory(body: unknown): Promise<CategoryPublic> {
   const input = validateCreateCategoryInput(body);
   return prisma.categories.create({
-    data: { name: input.name },
+    data: { name: input.name, code: input.code },
     select: categoriesPublicSelect,
   });
 }
@@ -39,9 +39,12 @@ export async function updateCategory(
 ): Promise<CategoryPublic> {
   const input = validateUpdateCategoryInput(body);
 
-  const data: { name?: string } = {};
+  const data: { name?: string; code?: string } = {};
   if (input.name !== undefined) {
     data.name = input.name;
+  }
+  if (input.code !== undefined) {
+    data.code = input.code;
   }
 
   return prisma.categories.update({

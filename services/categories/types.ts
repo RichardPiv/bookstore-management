@@ -6,6 +6,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 export const categoriesPublicSelect = {
   id: true,
   name: true,
+  code: true,
 } satisfies Prisma.categoriesSelect;
 
 /**
@@ -20,6 +21,7 @@ export type CategoryPublic = Prisma.categoriesGetPayload<{
  */
 export type CreateCategoryInput = {
   name: string;
+  code: string;
 };
 
 /**
@@ -27,4 +29,5 @@ export type CreateCategoryInput = {
  */
 export type UpdateCategoryInput = {
   name?: string;
+  code?: string;
 };

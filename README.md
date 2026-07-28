@@ -1,6 +1,6 @@
-# Bookstore Management — Application Next.js
+# La Réserve des Grimoires
 
-Application web de gestion et simulation d'une librairie.
+Application Next.js de gestion et simulation d'une librairie (ambiance médiéval-fantastique).
 
 > Documentation complète du projet : voir le [README parent](../README.md) et le dossier [`doc/`](../doc/).
 

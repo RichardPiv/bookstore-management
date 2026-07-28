@@ -73,6 +73,9 @@ export async function transferToShelf(
       data: {
         qty_reserve: book.qty_reserve - input.qty,
         qty_shelf: book.qty_shelf + input.qty,
+        ...(input.sale_price !== undefined
+          ? { sale_price: input.sale_price }
+          : {}),
         updated_at: new Date(),
       },
       select: stockPublicSelect,
