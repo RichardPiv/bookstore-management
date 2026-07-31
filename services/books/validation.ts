@@ -343,7 +343,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
     volume,
     collection,
     supplier_available,
-    alert_threshold,
     is_active,
     author_ids,
   } = body as Record<string, unknown>;
@@ -371,7 +370,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
   const parsedCoverUrl = parseOptionalCoverUrl(cover_url, "cover_url");
   assertPositiveInt(category_id, "category_id");
   assertPositiveInt(format_id, "format_id");
-  assertNonNegativeInt(alert_threshold, "alert_threshold");
   assertBoolean(is_active, "is_active");
   assertPositiveIntArray(author_ids, "author_ids");
   assertNoDuplicateIds(author_ids, "author_ids");
@@ -415,7 +413,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
     volume: parsedVolume,
     collection: parsedCollection,
     supplier_available: parsedSupplierAvailable,
-    alert_threshold,
     is_active,
     author_ids,
   };

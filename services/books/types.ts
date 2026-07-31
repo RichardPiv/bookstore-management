@@ -3,9 +3,10 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import type { AuthorPublic } from "@/services/authors/types";
 import type { CategoryPublic } from "@/services/categories/types";
 import type { FormatPublic } from "@/services/formats/types";
+import type { BookInventoryView } from "@/services/inventory/types";
 
 /**
- * Select fields for public books
+ * Select fields for public books (catalog identity — no local stock).
  */
 export const bookPublicSelect = {
   id: true,
@@ -27,9 +28,6 @@ export const bookPublicSelect = {
   volume: true,
   collection: true,
   supplier_available: true,
-  qty_reserve: true,
-  qty_shelf: true,
-  alert_threshold: true,
   is_active: true,
   created_at: true,
   updated_at: true,
@@ -42,11 +40,12 @@ export type BookPublic = Prisma.booksGetPayload<{
   select: typeof bookPublicSelect;
 }>;
 
-/** Book with linked authors and category for API responses. */
+/** Book with linked authors, category, format and optional local inventory. */
 export type BookWithAuthors = BookPublic & {
   authors: AuthorPublic[];
   category: CategoryPublic | null;
   format: FormatPublic | null;
+  inventory: BookInventoryView | null;
 };
 
 export type ListBooksOptions = {
@@ -73,7 +72,6 @@ export type CreateBookInput = {
   volume: number | null;
   collection: string | null;
   supplier_available: boolean;
-  alert_threshold: number;
   is_active: boolean;
   author_ids: number[];
 };
@@ -100,6 +98,7 @@ export type UpdateBookInput = {
   volume?: number | null;
   collection?: string | null;
   supplier_available?: boolean;
+  /** Only allowed when the book already has a book_inventory row. */
   alert_threshold?: number;
   is_active?: boolean;
   author_ids?: number[];

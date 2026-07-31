@@ -55,15 +55,22 @@ model books {
   volume              Int?      @db.UnsignedInt
   collection          String?   @db.VarChar(255)
   supplier_available  Boolean   @default(true)
-  qty_reserve         Int       @default(0) @db.UnsignedInt
-  qty_shelf           Int       @default(0) @db.UnsignedInt
-  alert_threshold     Int       @default(2) @db.UnsignedInt
   is_active           Boolean   @default(true)
   created_at          DateTime  @default(now()) @db.DateTime(0)
   updated_at          DateTime  @default(now()) @db.DateTime(0)
 
   @@index([category_id], map: "category_id")
   @@index([format_id], map: "format_id")
+}
+
+/** Local inventory for a catalog book (D1 / D59). No row = never entered the library. */
+model book_inventory {
+  book_id           Int      @id @db.Int
+  qty_reserve       Int      @default(0) @db.UnsignedInt
+  qty_shelf         Int      @default(0) @db.UnsignedInt
+  alert_threshold   Int      @default(2) @db.UnsignedInt
+  first_received_at DateTime @db.DateTime(0)
+  updated_at        DateTime @default(now()) @db.DateTime(0)
 }
 
 model books_authors {

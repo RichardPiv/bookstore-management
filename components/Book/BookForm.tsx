@@ -114,7 +114,11 @@ export default function BookForm({ id = "" }: { id?: string }) {
   const [volume, setVolume] = useState("");
   const [collection, setCollection] = useState("");
   const [supplier_available, setSupplierAvailable] = useState(true);
-  const [alert_threshold, setAlertThreshold] = useState("2");
+  const [alert_threshold, setAlertThreshold] = useState("");
+  const [initialAlertThreshold, setInitialAlertThreshold] = useState<
+    string | null
+  >(null);
+  const [hasInventory, setHasInventory] = useState(false);
   const [is_active, setIsActive] = useState(true);
   const [author_ids, setAuthorIds] = useState<number[]>([]);
 
@@ -200,7 +204,16 @@ export default function BookForm({ id = "" }: { id?: string }) {
       setVolume(book.volume != null ? String(book.volume) : "");
       setCollection(book.collection ?? "");
       setSupplierAvailable(book.supplier_available);
-      setAlertThreshold(String(book.alert_threshold));
+      if (book.inventory) {
+        const threshold = String(book.inventory.alert_threshold);
+        setHasInventory(true);
+        setAlertThreshold(threshold);
+        setInitialAlertThreshold(threshold);
+      } else {
+        setHasInventory(false);
+        setAlertThreshold("");
+        setInitialAlertThreshold(null);
+      }
       setIsActive(book.is_active);
       setAuthorIds(book.authors.map((author) => author.id));
       setBookLoadStatus("ready");
@@ -318,7 +331,9 @@ export default function BookForm({ id = "" }: { id?: string }) {
     setErrorMessage(null);
 
     const fields = getFormFields();
-    const validationError = validateBookFormFields(fields);
+    const validationError = validateBookFormFields(fields, {
+      requireAlertThreshold: isEditMode && hasInventory,
+    });
     if (validationError) {
       setStatus("error");
       setErrorMessage(validationError);
@@ -328,9 +343,17 @@ export default function BookForm({ id = "" }: { id?: string }) {
     setStatus("loading");
 
     try {
+      const alertThresholdChanged =
+        isEditMode &&
+        hasInventory &&
+        alert_threshold.trim() !== (initialAlertThreshold ?? "");
+
       const payload = buildBookFormPayload(fields, {
         supplier_available,
         is_active,
+        ...(alertThresholdChanged
+          ? { alert_threshold: Number(alert_threshold.trim()) }
+          : {}),
       });
 
       const response = await fetch(
@@ -759,23 +782,30 @@ export default function BookForm({ id = "" }: { id?: string }) {
           </div>
 
           <div className="space-y-6">
-            <div>
-              <label htmlFor="alert_threshold" className={labelClass}>
-                Seuil d&apos;alerte*
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                id="alert_threshold"
-                value={alert_threshold}
-                onChange={(e) =>
-                  setAlertThreshold(filterDigitsInput(e.target.value, 6))
-                }
-                placeholder="2"
-                disabled={isFormDisabled}
-                className={`${inputClass} font-label-sm`}
-              />
-            </div>
+            {isEditMode && hasInventory ? (
+              <div>
+                <label htmlFor="alert_threshold" className={labelClass}>
+                  Seuil d&apos;alerte*
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  id="alert_threshold"
+                  value={alert_threshold}
+                  onChange={(e) =>
+                    setAlertThreshold(filterDigitsInput(e.target.value, 6))
+                  }
+                  placeholder="2"
+                  disabled={isFormDisabled}
+                  className={`${inputClass} font-label-sm`}
+                />
+              </div>
+            ) : isEditMode ? (
+              <p className="font-body text-sm text-on-surface-variant italic">
+                Pas encore en librairie — le seuil d&apos;alerte sera disponible
+                après la première réception.
+              </p>
+            ) : null}
 
             <FormToggle
               id="is_active"

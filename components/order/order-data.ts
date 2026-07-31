@@ -8,9 +8,9 @@ export type OrderBook = {
   title: string;
   purchase_price: number | string;
   sale_price: number | string;
-  qty_reserve: number;
-  qty_shelf: number;
-  alert_threshold: number;
+  qty_reserve: number | null;
+  qty_shelf: number | null;
+  alert_threshold: number | null;
   is_active: boolean;
 };
 

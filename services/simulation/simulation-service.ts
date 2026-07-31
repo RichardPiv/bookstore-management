@@ -11,7 +11,8 @@ import {
 } from "@/lib/resolve-reference-status";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { createAlertInTransaction } from "@/services/alerts/alerts-service";
-import { stockPublicSelect } from "@/services/stocks/types";
+import { inventoryPublicSelect } from "@/services/inventory/types";
+import type { StockPublic } from "@/services/stocks/types";
 import { decrementShelfStock } from "@/services/stocks/stocks-service";
 
 import {
@@ -126,10 +127,49 @@ export async function runSimulation(
     });
 
     const events: SimulationEventPublic[] = [];
-    const purchasableBooks = await tx.books.findMany({
-      where: { is_active: true, qty_shelf: { gt: 0 } },
-      select: stockPublicSelect,
+
+    // Only books already in library inventory with shelf stock can be sold.
+    const shelfInventories = await tx.book_inventory.findMany({
+      where: { qty_shelf: { gt: 0 } },
+      select: inventoryPublicSelect,
     });
+
+    const books = await tx.books.findMany({
+      where: {
+        id: { in: shelfInventories.map((row) => row.book_id) },
+        is_active: true,
+      },
+      select: {
+        id: true,
+        title: true,
+        purchase_price: true,
+        sale_price: true,
+        is_active: true,
+      },
+    });
+
+    const inventoryByBookId = new Map(
+      shelfInventories.map((row) => [row.book_id, row]),
+    );
+
+    const purchasableBooks: StockPublic[] = [];
+    for (const book of books) {
+      const inventory = inventoryByBookId.get(book.id);
+      if (!inventory || inventory.qty_shelf <= 0) continue;
+      purchasableBooks.push({
+        id: book.id,
+        book_id: book.id,
+        title: book.title,
+        purchase_price: book.purchase_price,
+        sale_price: book.sale_price,
+        is_active: book.is_active,
+        qty_reserve: inventory.qty_reserve,
+        qty_shelf: inventory.qty_shelf,
+        alert_threshold: inventory.alert_threshold,
+        first_received_at: inventory.first_received_at,
+        updated_at: inventory.updated_at,
+      });
+    }
 
     if (purchasableBooks.length === 0) {
       events.push(
@@ -178,10 +218,7 @@ export async function runSimulation(
 
           await maybeCreateShelfAlert(updated, tx);
         } catch (error) {
-          if (
-            error instanceof AppError &&
-            error.code === "BUSINESS_RULE"
-          ) {
+          if (error instanceof AppError && error.code === "BUSINESS_RULE") {
             events.push(
               await logSimulationEvent(
                 run.id,

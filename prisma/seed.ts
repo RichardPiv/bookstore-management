@@ -538,9 +538,6 @@ async function seedBooks(
         volume,
         collection,
         supplier_available: supplierAvailable,
-        qty_reserve: 0,
-        qty_shelf: 0,
-        alert_threshold: 2,
         is_active: true,
       },
     });

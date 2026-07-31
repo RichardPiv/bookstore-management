@@ -2,7 +2,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 
 import type { AlertStatusPublic } from "@/services/alert_statuses/types";
 import type { AlertTypePublic } from "@/services/alert_types/types";
-import type { StockPublic } from "@/services/stocks/types";
+import type { BookRefPublic } from "@/services/stocks/types";
 
 export const alertPublicSelect = {
   id: true,
@@ -18,7 +18,7 @@ export type AlertPublic = Prisma.alertsGetPayload<{
 }>;
 
 export type AlertWithRelations = AlertPublic & {
-  book: StockPublic | null;
+  book: BookRefPublic | null;
   alert_type: AlertTypePublic | null;
   alert_status: AlertStatusPublic | null;
 };

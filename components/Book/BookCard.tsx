@@ -304,70 +304,91 @@ export default function BookCard({ id }: { id: string }) {
         </div>
 
         <div className="flex flex-col gap-4 border border-outline-variant/30 bg-surface-container p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <span
-              className="material-symbols-outlined text-primary"
-              aria-hidden
-            >
-              inventory_2
-            </span>
-            <div className="flex flex-col">
-              <span className="text-[10px] tracking-widest text-outline uppercase">
-                Stocks en Archive
+          {book.inventory == null ? (
+            <div className="flex items-center gap-4">
+              <span
+                className="material-symbols-outlined text-outline"
+                aria-hidden
+              >
+                inventory_2
               </span>
-              <span className="text-on-surface">
-                Réserve:{" "}
-                <span className="font-bold text-primary">
-                  {book.qty_reserve}
+              <div className="flex flex-col">
+                <span className="text-[10px] tracking-widest text-outline uppercase">
+                  Stocks en Archive
                 </span>
-              </span>
-            </div>
-          </div>
-          <div
-            className="hidden h-8 w-px bg-outline-variant/50 sm:block"
-            aria-hidden
-          />
-          <div className="flex items-center gap-4">
-            <span
-              className="material-symbols-outlined text-primary"
-              aria-hidden
-            >
-              auto_stories
-            </span>
-            <div className="flex flex-col">
-              <span className="text-[10px] tracking-widest text-outline uppercase">
-                Exposition Publique
-              </span>
-              <span className="text-on-surface">
-                Rayon:{" "}
-                <span className="font-bold text-primary">
-                  {book.qty_shelf} / {SHELF_MAX}
+                <span className="text-on-surface-variant">
+                  Pas encore en librairie
                 </span>
-              </span>
+              </div>
             </div>
-          </div>
-          <div
-            className="hidden h-8 w-px bg-outline-variant/50 sm:block"
-            aria-hidden
-          />
-          <div className="flex items-center gap-4">
-            <span
-              className="material-symbols-outlined text-primary"
-              aria-hidden
-            >
-              notifications_active
-            </span>
-            <div className="flex flex-col">
-              <span className="text-[10px] tracking-widest text-outline uppercase">
-                Seuil d&apos;alerte
-              </span>
-              <span className="text-on-surface">
-                <span className="font-bold text-primary">
-                  {book.alert_threshold}
+          ) : (
+            <>
+              <div className="flex items-center gap-4">
+                <span
+                  className="material-symbols-outlined text-primary"
+                  aria-hidden
+                >
+                  inventory_2
                 </span>
-              </span>
-            </div>
-          </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] tracking-widest text-outline uppercase">
+                    Stocks en Archive
+                  </span>
+                  <span className="text-on-surface">
+                    Réserve:{" "}
+                    <span className="font-bold text-primary">
+                      {book.inventory.qty_reserve}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div
+                className="hidden h-8 w-px bg-outline-variant/50 sm:block"
+                aria-hidden
+              />
+              <div className="flex items-center gap-4">
+                <span
+                  className="material-symbols-outlined text-primary"
+                  aria-hidden
+                >
+                  auto_stories
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] tracking-widest text-outline uppercase">
+                    Exposition Publique
+                  </span>
+                  <span className="text-on-surface">
+                    Rayon:{" "}
+                    <span className="font-bold text-primary">
+                      {book.inventory.qty_shelf} / {SHELF_MAX}
+                    </span>
+                  </span>
+                </div>
+              </div>
+              <div
+                className="hidden h-8 w-px bg-outline-variant/50 sm:block"
+                aria-hidden
+              />
+              <div className="flex items-center gap-4">
+                <span
+                  className="material-symbols-outlined text-primary"
+                  aria-hidden
+                >
+                  notifications_active
+                </span>
+                <div className="flex flex-col">
+                  <span className="text-[10px] tracking-widest text-outline uppercase">
+                    Seuil d&apos;alerte
+                  </span>
+                  <span className="text-on-surface">
+                    <span className="font-bold text-primary">
+                      {book.inventory.alert_threshold}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-4 pt-4">

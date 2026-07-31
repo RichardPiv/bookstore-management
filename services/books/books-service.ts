@@ -14,6 +14,12 @@ import {
   formatsPublicSelect,
   type FormatPublic,
 } from "@/services/formats/types";
+import {
+  fetchInventoriesByBookIds,
+  getInventoryByBookId,
+  updateInventoryAlertThreshold,
+} from "@/services/inventory/inventory-service";
+import type { BookInventoryView } from "@/services/inventory/types";
 
 import {
   BookPublic,
@@ -35,8 +41,6 @@ type BookStockSnapshot = {
 type GeneratedCreateBookFields = {
   lore_code: string;
   cote: string;
-  qty_reserve: number;
-  qty_shelf: number;
 };
 
 function parseSequenceFromLoreCode(loreCode: string): number {
@@ -82,8 +86,6 @@ async function generateCreateBookFields(
   return {
     lore_code: `${category.code}-${sequenceSuffix}`,
     cote: `${category.code}-${format.code}-${sequenceSuffix}`,
-    qty_reserve: 0,
-    qty_shelf: 0,
   };
 }
 
@@ -141,6 +143,20 @@ async function assertBookCanBeDeactivated(
   }
 
   await assertNoPendingSupplierOrderForBook(bookId, tx);
+}
+
+async function getStockSnapshotForBook(
+  bookId: number,
+  tx: TransactionClient = prisma,
+): Promise<BookStockSnapshot> {
+  const inventory = await getInventoryByBookId(bookId, tx);
+  if (!inventory) {
+    return { qty_reserve: 0, qty_shelf: 0 };
+  }
+  return {
+    qty_reserve: inventory.qty_reserve,
+    qty_shelf: inventory.qty_shelf,
+  };
 }
 
 async function assertCategoryExists(
@@ -217,9 +233,6 @@ function toBookUpdateData(input: UpdateBookInput): Prisma.booksUpdateInput {
   if (input.collection !== undefined) data.collection = input.collection;
   if (input.supplier_available !== undefined) {
     data.supplier_available = input.supplier_available;
-  }
-  if (input.alert_threshold !== undefined) {
-    data.alert_threshold = input.alert_threshold;
   }
   if (input.is_active !== undefined) data.is_active = input.is_active;
 
@@ -306,55 +319,72 @@ async function fetchFormatsByIds(
   return new Map(formats.map((format) => [format.id, format]));
 }
 
-/** Add the authors, category and format to the book. */
+/** Add the authors, category, format and inventory to the book. */
 function withRelations(
   book: BookPublic,
   authorsByBookId: Map<number, AuthorPublic[]>,
   categoriesById: Map<number, CategoryPublic>,
   formatsById: Map<number, FormatPublic>,
+  inventoriesByBookId: Map<number, BookInventoryView>,
 ): BookWithAuthors {
   return {
     ...book,
     authors: authorsByBookId.get(book.id) ?? [],
     category: categoriesById.get(book.category_id) ?? null,
     format: formatsById.get(book.format_id) ?? null,
+    inventory: inventoriesByBookId.get(book.id) ?? null,
   };
 }
 
-/** Add the authors, category and format to the books. */
+/** Add the authors, category, format and inventory to the books. */
 function withRelationsMany(
   books: BookPublic[],
   authorsByBookId: Map<number, AuthorPublic[]>,
   categoriesById: Map<number, CategoryPublic>,
   formatsById: Map<number, FormatPublic>,
+  inventoriesByBookId: Map<number, BookInventoryView>,
 ): BookWithAuthors[] {
   return books.map((book) =>
-    withRelations(book, authorsByBookId, categoriesById, formatsById),
+    withRelations(
+      book,
+      authorsByBookId,
+      categoriesById,
+      formatsById,
+      inventoriesByBookId,
+    ),
   );
 }
 
-/** Enrich the books with their authors, category and format. */
+/** Enrich the books with their authors, category, format and inventory. */
 async function enrichBooks(
   books: BookPublic[],
   tx: TransactionClient = prisma,
 ): Promise<BookWithAuthors[]> {
-  const authorsByBookId = await fetchAuthorsByBookIds(
-    books.map((book) => book.id),
-    tx,
-  );
-  const categoriesById = await fetchCategoriesByIds(
-    books.map((book) => book.category_id),
-    tx,
-  );
-  const formatsById = await fetchFormatsByIds(
-    books.map((book) => book.format_id),
-    tx,
-  );
+  const bookIds = books.map((book) => book.id);
+  const [authorsByBookId, categoriesById, formatsById, inventoriesByBookId] =
+    await Promise.all([
+      fetchAuthorsByBookIds(bookIds, tx),
+      fetchCategoriesByIds(
+        books.map((book) => book.category_id),
+        tx,
+      ),
+      fetchFormatsByIds(
+        books.map((book) => book.format_id),
+        tx,
+      ),
+      fetchInventoriesByBookIds(bookIds, tx),
+    ]);
 
-  return withRelationsMany(books, authorsByBookId, categoriesById, formatsById);
+  return withRelationsMany(
+    books,
+    authorsByBookId,
+    categoriesById,
+    formatsById,
+    inventoriesByBookId,
+  );
 }
 
-/** Enrich the book with its authors, category and format. */
+/** Enrich the book with its authors, category, format and inventory. */
 async function enrichBook(
   book: BookPublic,
   tx: TransactionClient = prisma,
@@ -421,9 +451,6 @@ export async function createBook(body: unknown): Promise<BookWithAuthors> {
         volume: input.volume,
         collection: input.collection,
         supplier_available: input.supplier_available,
-        qty_reserve: generatedFields.qty_reserve,
-        qty_shelf: generatedFields.qty_shelf,
-        alert_threshold: input.alert_threshold,
         is_active: input.is_active,
       },
       select: bookPublicSelect,
@@ -471,7 +498,12 @@ export async function updateBook(
     }
 
     if (input.is_active === false) {
-      await assertBookCanBeDeactivated(id, current, tx);
+      const stock = await getStockSnapshotForBook(id, tx);
+      await assertBookCanBeDeactivated(id, stock, tx);
+    }
+
+    if (input.alert_threshold !== undefined) {
+      await updateInventoryAlertThreshold(id, input.alert_threshold, tx);
     }
 
     const book = await tx.books.update({
@@ -516,7 +548,8 @@ export async function deleteBook(id: number): Promise<BookWithAuthors> {
       throw new AppError("BUSINESS_RULE", "Book is already inactive.", 409);
     }
 
-    await assertBookCanBeDeactivated(id, book, tx);
+    const stock = await getStockSnapshotForBook(id, tx);
+    await assertBookCanBeDeactivated(id, stock, tx);
 
     const deactivated = await tx.books.update({
       where: { id },

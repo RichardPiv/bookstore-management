@@ -2,7 +2,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 
 import type { DeliveryWithStatus } from "@/services/deliveries/types";
 import type { OrderStatusPublic } from "@/services/order_statuses/types";
-import type { StockPublic } from "@/services/stocks/types";
+import type { BookRefPublic } from "@/services/stocks/types";
 import type { SupplierPublic } from "@/services/suppliers/types";
 import type { UserPublic } from "@/services/users/types";
 
@@ -24,7 +24,7 @@ export type OrderLinePublic = {
   book_id: number;
   supplier_id: number;
   qty: number;
-  book: StockPublic | null;
+  book: BookRefPublic | null;
   supplier: SupplierPublic | null;
 };
 

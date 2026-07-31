@@ -21,7 +21,11 @@ import { deliveryStatusSelect } from "@/services/delivery_statuses/types";
 import type { DeliveryStatusPublic } from "@/services/delivery_statuses/types";
 import { orderStatusSelect } from "@/services/order_statuses/types";
 import type { OrderStatusPublic } from "@/services/order_statuses/types";
-import { stockPublicSelect, type StockPublic } from "@/services/stocks/types";
+import {
+  fetchInventoriesByBookIds,
+  incrementReserveStock,
+} from "@/services/inventory/inventory-service";
+import type { BookRefPublic } from "@/services/stocks/types";
 import { supplierSelect, type SupplierPublic } from "@/services/suppliers/types";
 
 import {
@@ -84,13 +88,7 @@ async function incrementBookReserve(
   qty: number,
   tx: TransactionClient,
 ) {
-  await tx.books.update({
-    where: { id: bookId },
-    data: {
-      qty_reserve: { increment: qty },
-      updated_at: new Date(),
-    },
-  });
+  await incrementReserveStock(bookId, qty, tx);
 }
 
 async function isOrderStatusPending(
@@ -123,30 +121,54 @@ async function enrichOrder(
   const bookIds = lines.map((line) => line.book_id);
   const supplierIds = lines.map((line) => line.supplier_id);
 
-  const [books, suppliers, orderStatus, delivery, user] = await Promise.all([
-    tx.books.findMany({
-      where: { id: { in: bookIds } },
-      select: stockPublicSelect,
-    }),
-    tx.suppliers.findMany({
-      where: { id: { in: supplierIds } },
-      select: supplierSelect,
-    }),
-    tx.order_statuses.findUnique({
-      where: { id: order.order_status_id },
-      select: orderStatusSelect,
-    }),
-    tx.deliveries.findUnique({
-      where: { id: order.delivery_id },
-      select: deliveryPublicSelect,
-    }),
-    tx.users.findUnique({
-      where: { id: order.user_id },
-      select: { id: true, username: true },
-    }),
-  ]);
+  const [books, suppliers, orderStatus, delivery, user, inventoriesByBookId] =
+    await Promise.all([
+      tx.books.findMany({
+        where: { id: { in: bookIds } },
+        select: {
+          id: true,
+          title: true,
+          purchase_price: true,
+          sale_price: true,
+          is_active: true,
+        },
+      }),
+      tx.suppliers.findMany({
+        where: { id: { in: supplierIds } },
+        select: supplierSelect,
+      }),
+      tx.order_statuses.findUnique({
+        where: { id: order.order_status_id },
+        select: orderStatusSelect,
+      }),
+      tx.deliveries.findUnique({
+        where: { id: order.delivery_id },
+        select: deliveryPublicSelect,
+      }),
+      tx.users.findUnique({
+        where: { id: order.user_id },
+        select: { id: true, username: true },
+      }),
+      fetchInventoriesByBookIds(bookIds, tx),
+    ]);
 
-  const booksById = new Map(books.map((book) => [book.id, book]));
+  const booksById = new Map(
+    books.map((book) => {
+      const inventory = inventoriesByBookId.get(book.id) ?? null;
+      const ref: BookRefPublic = {
+        id: book.id,
+        title: book.title,
+        purchase_price: book.purchase_price,
+        sale_price: book.sale_price,
+        is_active: book.is_active,
+        qty_reserve: inventory?.qty_reserve ?? null,
+        qty_shelf: inventory?.qty_shelf ?? null,
+        alert_threshold: inventory?.alert_threshold ?? null,
+        first_received_at: inventory?.first_received_at ?? null,
+      };
+      return [book.id, ref] as const;
+    }),
+  );
   const suppliersById = new Map(
     suppliers.map((supplier) => [supplier.id, supplier]),
   );

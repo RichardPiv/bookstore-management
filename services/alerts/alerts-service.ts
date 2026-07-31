@@ -5,7 +5,8 @@ import { alertStatusSelect } from "@/services/alert_statuses/types";
 import type { AlertStatusPublic } from "@/services/alert_statuses/types";
 import { alertTypeSelect } from "@/services/alert_types/types";
 import type { AlertTypePublic } from "@/services/alert_types/types";
-import { stockPublicSelect, type StockPublic } from "@/services/stocks/types";
+import { fetchInventoriesByBookIds } from "@/services/inventory/inventory-service";
+import type { BookRefPublic } from "@/services/stocks/types";
 
 import {
   alertPublicSelect,
@@ -60,17 +61,43 @@ async function assertAlertStatusExists(
 async function fetchBooksByIds(
   bookIds: number[],
   tx: TransactionClient,
-): Promise<Map<number, StockPublic>> {
+): Promise<Map<number, BookRefPublic>> {
   if (bookIds.length === 0) {
     return new Map();
   }
 
-  const books = await tx.books.findMany({
-    where: { id: { in: [...new Set(bookIds)] } },
-    select: stockPublicSelect,
-  });
+  const uniqueIds = [...new Set(bookIds)];
+  const [books, inventoriesByBookId] = await Promise.all([
+    tx.books.findMany({
+      where: { id: { in: uniqueIds } },
+      select: {
+        id: true,
+        title: true,
+        purchase_price: true,
+        sale_price: true,
+        is_active: true,
+      },
+    }),
+    fetchInventoriesByBookIds(uniqueIds, tx),
+  ]);
 
-  return new Map(books.map((book) => [book.id, book]));
+  return new Map(
+    books.map((book) => {
+      const inventory = inventoriesByBookId.get(book.id) ?? null;
+      const ref: BookRefPublic = {
+        id: book.id,
+        title: book.title,
+        purchase_price: book.purchase_price,
+        sale_price: book.sale_price,
+        is_active: book.is_active,
+        qty_reserve: inventory?.qty_reserve ?? null,
+        qty_shelf: inventory?.qty_shelf ?? null,
+        alert_threshold: inventory?.alert_threshold ?? null,
+        first_received_at: inventory?.first_received_at ?? null,
+      };
+      return [book.id, ref];
+    }),
+  );
 }
 
 async function fetchAlertTypesByIds(
@@ -107,7 +134,7 @@ async function fetchAlertStatusesByIds(
 
 function withRelations(
   alert: AlertPublic,
-  booksById: Map<number, StockPublic>,
+  booksById: Map<number, BookRefPublic>,
   typesById: Map<number, AlertTypePublic>,
   statusesById: Map<number, AlertStatusPublic>,
 ): AlertWithRelations {

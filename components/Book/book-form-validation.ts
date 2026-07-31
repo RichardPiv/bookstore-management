@@ -39,7 +39,10 @@ export function getRarityOptions() {
   }));
 }
 
-export function validateBookFormFields(fields: BookFormFields): string | null {
+export function validateBookFormFields(
+  fields: BookFormFields,
+  options?: { requireAlertThreshold?: boolean },
+): string | null {
   const title = fields.title.trim();
   const summary = fields.summary.trim();
   const editor = fields.editor.trim();
@@ -52,6 +55,7 @@ export function validateBookFormFields(fields: BookFormFields): string | null {
   const series = fields.series.trim();
   const volume = fields.volume.trim();
   const alertThreshold = fields.alert_threshold.trim();
+  const requireAlertThreshold = options?.requireAlertThreshold === true;
 
   if (!title) {
     return "Le titre est obligatoire.";
@@ -139,7 +143,10 @@ export function validateBookFormFields(fields: BookFormFields): string | null {
     }
   }
 
-  if (alertThreshold) {
+  if (requireAlertThreshold || alertThreshold) {
+    if (requireAlertThreshold && !alertThreshold) {
+      return "Le seuil d'alerte est obligatoire.";
+    }
     const threshold = Number(alertThreshold);
     if (!Number.isInteger(threshold) || threshold < 0) {
       return "Le seuil d'alerte doit être un entier positif ou nul.";
@@ -158,11 +165,11 @@ export function buildBookFormPayload(
   options: {
     supplier_available: boolean;
     is_active: boolean;
+    /** Include only on edit when inventory exists and the value changed. */
+    alert_threshold?: number;
   },
 ) {
-  const alertThreshold = fields.alert_threshold.trim();
-
-  return {
+  const payload: Record<string, unknown> = {
     title: fields.title.trim(),
     summary: fields.summary.trim(),
     editor: fields.editor.trim(),
@@ -179,10 +186,15 @@ export function buildBookFormPayload(
     volume: fields.volume.trim() === "" ? null : Number(fields.volume),
     collection: fields.collection.trim() || null,
     supplier_available: options.supplier_available,
-    alert_threshold: alertThreshold === "" ? 2 : Number(alertThreshold),
     is_active: options.is_active,
     author_ids: fields.author_ids,
   };
+
+  if (options.alert_threshold !== undefined) {
+    payload.alert_threshold = options.alert_threshold;
+  }
+
+  return payload;
 }
 
 export function formatPublicationDateInput(
