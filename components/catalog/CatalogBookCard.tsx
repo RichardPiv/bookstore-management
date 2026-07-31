@@ -4,6 +4,8 @@ import {
   type CatalogBook,
   rarityLabels,
 } from "@/components/catalog/catalog-data";
+import { useCallback } from "react";
+import { useCart } from "./CartProvider";
 
 type CatalogBookCardProps = {
   book: CatalogBook;
@@ -11,6 +13,12 @@ type CatalogBookCardProps = {
 
 export default function CatalogBookCard({ book }: CatalogBookCardProps) {
   const rarity = rarityLabels[book.rarity];
+
+  const { addItem } = useCart();
+
+  const handleAddToCart = useCallback(() => {
+    addItem({ book, quantity: 1 });
+  }, [book, addItem]);
 
   return (
     <article className="border-ornamental flex flex-col bg-surface-container-low p-6">
@@ -73,6 +81,7 @@ export default function CatalogBookCard({ book }: CatalogBookCardProps) {
           type="button"
           className="flex size-8 items-center justify-center border border-outline-variant bg-surface text-outline cursor-pointer transition-colors hover:border-primary hover:text-primary"
           aria-label={`Ajouter ${book.title} au panier`}
+          onClick={handleAddToCart}
         >
           <span className="material-symbols-outlined text-sm">
             add_shopping_cart

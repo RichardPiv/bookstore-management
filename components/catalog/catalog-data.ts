@@ -22,6 +22,29 @@ export type CatalogCategory = {
   name: string;
 };
 
+export type CartItem = {
+  book: CatalogBook;
+  quantity: number;
+};
+
+export type Cart = {
+  items: CartItem[];
+};
+
+export type CartContextType = {
+  cart: Cart;
+  itemsCount: number;
+  total: number;
+  addItem: (item: CartItem) => void;
+  removeItem: (item: CartItem) => void;
+  updateItemQuantity: (item: CartItem, quantity: number) => void;
+  clearCart: () => void;
+  checkout: () => Promise<boolean>;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
+};
+
 export const ALL_CATEGORY: CatalogCategory = {
   id: "all",
   name: "Tous",
@@ -86,7 +109,8 @@ export function mapApiBookToCatalogBook(raw: unknown): CatalogBook | null {
     purchasePrice: toNumber(book.purchase_price),
     rarity,
     category: typeof category === "string" ? category : "",
-    imageUrl: typeof coverUrl === "string" && coverUrl.length > 0 ? coverUrl : null,
+    imageUrl:
+      typeof coverUrl === "string" && coverUrl.length > 0 ? coverUrl : null,
   };
 }
 

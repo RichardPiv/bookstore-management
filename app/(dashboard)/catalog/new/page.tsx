@@ -5,7 +5,7 @@ import BookForm from "@/components/Book/BookForm";
 export default function NewBookPage() {
   return (
     <div className="custom-scroll flex-1 overflow-y-auto p-12">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-8xl">
         <header className="mb-10">
           <Link
             href="/catalog"
