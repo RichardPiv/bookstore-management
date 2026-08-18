@@ -1,3 +1,5 @@
+import AlertsList from "@/components/alert/AlertsList";
+
 export default function AlertsPage() {
   return (
     <div className="flex-1 space-y-12 overflow-y-auto p-12">
@@ -11,6 +13,7 @@ export default function AlertsPage() {
             importants dans la Réserve.&rdquo;
           </p>
         </section>
+        <AlertsList />
       </div>
     </div>
   );

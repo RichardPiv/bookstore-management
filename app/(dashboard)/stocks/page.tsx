@@ -1,3 +1,5 @@
+import StockList from "@/components/stock/StockList";
+
 export default function StocksPage() {
   return (
     <div className="flex-1 space-y-12 overflow-y-auto p-12">
@@ -11,6 +13,7 @@ export default function StocksPage() {
             stock.&rdquo;
           </p>
         </section>
+        <StockList />
       </div>
     </div>
   );
