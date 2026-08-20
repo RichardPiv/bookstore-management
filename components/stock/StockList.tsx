@@ -9,7 +9,7 @@ import StockCard from "./StockCard";
 import StockDetail from "./StockDetail";
 import { type LoadStatus, type Stock } from "./stock-data";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 6;
 
 export default function StockList() {
   const [status, setStatus] = useState<LoadStatus>("loading");

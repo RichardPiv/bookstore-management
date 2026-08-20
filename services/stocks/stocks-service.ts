@@ -6,6 +6,7 @@ import {
   inventoryPublicSelect,
   type InventoryPublic,
 } from "@/services/inventory/types";
+import { syncStockAlertsForBook } from "@/services/alerts/stock-alerts-sync";
 
 import type { StockPublic } from "./types";
 import { validateTransferToShelfInput } from "./validation";
@@ -200,6 +201,8 @@ export async function transferToShelf(
           })
         : book;
 
+    await syncStockAlertsForBook(input.book_id, client);
+
     return toStockPublic(refreshedBook, updatedInventory);
   };
 
@@ -248,6 +251,8 @@ export async function decrementShelfStock(
     },
     select: inventoryPublicSelect,
   });
+
+  await syncStockAlertsForBook(bookId, tx);
 
   return toStockPublic(book, updatedInventory);
 }

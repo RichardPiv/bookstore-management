@@ -1,5 +1,6 @@
 "use client";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { cn } from "@/lib/utils";
 
 import {
@@ -7,6 +8,7 @@ import {
   getAlertStatusLabel,
   getAlertTypeLabel,
   isAlertActive,
+  isReserveOutAlert,
   isShelfOutAlert,
   type Alert,
 } from "./alert-data";
@@ -26,24 +28,21 @@ export default function AlertCard({
   const typeName = alert.alert_type?.name;
   const active = isAlertActive(statusName);
   const shelfOut = isShelfOutAlert(typeName);
+  const reserveOut = isReserveOutAlert(typeName);
   const bookTitle = alert.book?.title ?? `Livre #${alert.book_id}`;
 
   return (
-    <button
+    <OrnamentalFrame
+      as="button"
       type="button"
       onClick={onSelect}
       className={cn(
-        "border-ornamental group relative w-full cursor-pointer bg-surface-container-low p-6 text-left transition-colors",
+        "group w-full cursor-pointer bg-surface-container-low p-6 text-left transition-colors",
         selected
           ? "border-primary/60 bg-primary/5"
           : "hover:border-primary/40 hover:bg-surface-container",
       )}
     >
-      <div className="catalog-corner catalog-corner-tl" aria-hidden />
-      <div className="catalog-corner catalog-corner-tr" aria-hidden />
-      <div className="catalog-corner catalog-corner-bl" aria-hidden />
-      <div className="catalog-corner catalog-corner-br" aria-hidden />
-
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -63,7 +62,7 @@ export default function AlertCard({
             <span
               className={cn(
                 "border px-2 py-1 font-label text-[9px] tracking-[0.2em] uppercase",
-                shelfOut
+                shelfOut || reserveOut
                   ? "border-error/40 bg-error/5 text-error"
                   : "border-outline-variant/50 text-on-surface-variant",
               )}
@@ -99,6 +98,6 @@ export default function AlertCard({
           </span>
         </div>
       </div>
-    </button>
+    </OrnamentalFrame>
   );
 }

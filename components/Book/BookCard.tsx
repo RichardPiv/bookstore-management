@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { rarityLabels } from "@/components/catalog/catalog-data";
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { isBookRarity } from "@/lib/book-rarities";
 import type { BookWithAuthors } from "@/services/books/types";
 
@@ -163,15 +164,7 @@ export default function BookCard({ id }: { id: string }) {
     <div className="relative z-10 flex w-full flex-col items-start gap-12 md:flex-row">
       {/* Couverture */}
       <div className="sticky top-24 w-full shrink-0 md:w-1/2">
-        <div className="book-detail-cover border-ornamental relative mx-auto w-full max-w-[450px] bg-surface-container-low p-4 shadow-2xl">
-          <div
-            className="catalog-corner catalog-corner-tl size-6! border-[3px]!"
-            aria-hidden
-          />
-          <div
-            className="catalog-corner catalog-corner-br size-6! border-[3px]!"
-            aria-hidden
-          />
+        <OrnamentalFrame className="book-detail-cover relative mx-auto w-full max-w-[450px] bg-surface-container-low p-4 shadow-2xl">
           <div className="book-detail-cover-frame relative aspect-[3/4] w-full overflow-hidden">
             {coverUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -201,7 +194,7 @@ export default function BookCard({ id }: { id: string }) {
               aria-hidden
             />
           </div>
-        </div>
+        </OrnamentalFrame>
       </div>
 
       {/* Détails */}

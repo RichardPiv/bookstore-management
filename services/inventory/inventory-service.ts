@@ -7,6 +7,7 @@ import {
   type BookInventoryView,
   type InventoryPublic,
 } from "./types";
+import { syncStockAlertsForBook } from "@/services/alerts/stock-alerts-sync";
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -69,7 +70,7 @@ export async function incrementReserveStock(
   });
 
   if (!existing) {
-    return tx.book_inventory.create({
+    const created = await tx.book_inventory.create({
       data: {
         book_id: bookId,
         qty_reserve: qty,
@@ -80,9 +81,11 @@ export async function incrementReserveStock(
       },
       select: inventoryPublicSelect,
     });
+    await syncStockAlertsForBook(bookId, tx);
+    return created;
   }
 
-  return tx.book_inventory.update({
+  const updated = await tx.book_inventory.update({
     where: { book_id: bookId },
     data: {
       qty_reserve: { increment: qty },
@@ -90,6 +93,8 @@ export async function incrementReserveStock(
     },
     select: inventoryPublicSelect,
   });
+  await syncStockAlertsForBook(bookId, tx);
+  return updated;
 }
 
 /** Update alert threshold for a book already in inventory. */
@@ -111,7 +116,7 @@ export async function updateInventoryAlertThreshold(
     );
   }
 
-  return tx.book_inventory.update({
+  const updated = await tx.book_inventory.update({
     where: { book_id: bookId },
     data: {
       alert_threshold: alertThreshold,
@@ -119,4 +124,6 @@ export async function updateInventoryAlertThreshold(
     },
     select: inventoryPublicSelect,
   });
+  await syncStockAlertsForBook(bookId, tx);
+  return updated;
 }

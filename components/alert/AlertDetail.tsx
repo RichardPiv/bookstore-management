@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,8 @@ import {
   getAlertStatusLabel,
   getAlertTypeLabel,
   isAlertActive,
+  isReserveLowAlert,
+  isReserveOutAlert,
   isShelfLowAlert,
   isShelfOutAlert,
   type Alert,
@@ -63,6 +66,8 @@ export default function AlertDetail({
   const active = isAlertActive(statusName);
   const shelfOut = isShelfOutAlert(typeName);
   const shelfLow = isShelfLowAlert(typeName);
+  const reserveOut = isReserveOutAlert(typeName);
+  const reserveLow = isReserveLowAlert(typeName);
   const bookTitle = alert.book?.title ?? `Livre #${alert.book_id}`;
   const qtyShelf = alert.book?.qty_shelf;
   const qtyReserve = alert.book?.qty_reserve;
@@ -102,12 +107,7 @@ export default function AlertDetail({
   }
 
   return (
-    <div className="border-ornamental sticky top-6 bg-surface-container-low p-6">
-      <div className="catalog-corner catalog-corner-tl" aria-hidden />
-      <div className="catalog-corner catalog-corner-tr" aria-hidden />
-      <div className="catalog-corner catalog-corner-bl" aria-hidden />
-      <div className="catalog-corner catalog-corner-br" aria-hidden />
-
+    <OrnamentalFrame className="sticky top-6 bg-surface-container-low p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -135,7 +135,7 @@ export default function AlertDetail({
           <span
             className={cn(
               "border px-2 py-1 font-label text-[9px] tracking-[0.2em] uppercase",
-              shelfOut
+              shelfOut || reserveOut
                 ? "border-error/40 bg-error/5 text-error"
                 : "border-outline-variant/50 text-on-surface-variant",
             )}
@@ -187,6 +187,14 @@ export default function AlertDetail({
         </p>
       ) : null}
 
+      {(reserveLow || reserveOut) && active ? (
+        <p className="mb-6 font-body text-sm text-on-surface-variant">
+          Réapprovisionnement via une commande fournisseur (D15). L&apos;alerte
+          peut aussi se résoudre automatiquement une fois la réserve corrigée
+          (D30).
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-3">
         <Button asChild variant="outline" className="min-w-40">
           <Link href="/stocks">
@@ -196,6 +204,17 @@ export default function AlertDetail({
             Voir les stocks
           </Link>
         </Button>
+
+        {reserveLow || reserveOut ? (
+          <Button asChild variant="outline" className="min-w-40">
+            <Link href="/orders">
+              <span className="material-symbols-outlined text-sm" aria-hidden>
+                local_shipping
+              </span>
+              Voir les commandes
+            </Link>
+          </Button>
+        ) : null}
 
         {active && resolvedStatus ? (
           <Button
@@ -238,6 +257,6 @@ export default function AlertDetail({
           {resolveSuccess}
         </p>
       ) : null}
-    </div>
+    </OrnamentalFrame>
   );
 }

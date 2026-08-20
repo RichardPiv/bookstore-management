@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -146,12 +147,7 @@ export default function StockDetail({
   }
 
   return (
-    <div className="border-ornamental sticky top-6 bg-surface-container-low p-6">
-      <div className="catalog-corner catalog-corner-tl" aria-hidden />
-      <div className="catalog-corner catalog-corner-tr" aria-hidden />
-      <div className="catalog-corner catalog-corner-bl" aria-hidden />
-      <div className="catalog-corner catalog-corner-br" aria-hidden />
-
+    <OrnamentalFrame className="sticky top-6 bg-surface-container-low p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -362,6 +358,6 @@ export default function StockDetail({
           </p>
         ) : null}
       </form>
-    </div>
+    </OrnamentalFrame>
   );
 }

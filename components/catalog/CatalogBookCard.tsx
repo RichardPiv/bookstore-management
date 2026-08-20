@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { useCallback } from "react";
 
 import {
   type CatalogBook,
   rarityLabels,
 } from "@/components/catalog/catalog-data";
-import { useCallback } from "react";
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { useCart } from "./CartProvider";
 
 type CatalogBookCardProps = {
@@ -21,12 +22,10 @@ export default function CatalogBookCard({ book }: CatalogBookCardProps) {
   }, [book, addItem]);
 
   return (
-    <article className="border-ornamental flex flex-col bg-surface-container-low p-6">
-      <div className="catalog-corner catalog-corner-tl" aria-hidden />
-      <div className="catalog-corner catalog-corner-tr" aria-hidden />
-      <div className="catalog-corner catalog-corner-bl" aria-hidden />
-      <div className="catalog-corner catalog-corner-br" aria-hidden />
-
+    <OrnamentalFrame
+      as="article"
+      className="flex flex-col bg-surface-container-low p-6"
+    >
       <Link
         href={`/catalog/${book.id}`}
         className="relative mb-6 aspect-[4/3] w-full border border-outline-variant bg-surface p-1"
@@ -88,6 +87,6 @@ export default function CatalogBookCard({ book }: CatalogBookCardProps) {
           </span>
         </button>
       </div>
-    </article>
+    </OrnamentalFrame>
   );
 }

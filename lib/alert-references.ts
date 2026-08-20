@@ -25,3 +25,15 @@ export const SHELF_OUT_ALERT_TYPE_NAMES = [
   "shelf_out",
   "stockout",
 ] as const;
+
+/** Alert types for low reserve stock. */
+export const RESERVE_LOW_ALERT_TYPE_NAMES = [
+  "stock_bas",
+  "reserve_low",
+] as const;
+
+/** Alert types for reserve stockout. */
+export const RESERVE_OUT_ALERT_TYPE_NAMES = [
+  "rupture_stock",
+  "reserve_out",
+] as const;

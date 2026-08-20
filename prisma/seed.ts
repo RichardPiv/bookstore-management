@@ -105,7 +105,12 @@ const ORDER_STATUSES = ["pending", "received"] as const;
 const DELIVERY_STATUSES = ["pending", "delivered"] as const;
 /** Alignés sur lib/alert-references.ts + insomnia-tests. */
 const ALERT_STATUSES = ["active", "resolved"] as const;
-const ALERT_TYPES = ["rupture_rayon", "stock_rayon_bas"] as const;
+const ALERT_TYPES = [
+  "rupture_rayon",
+  "stock_rayon_bas",
+  "rupture_stock",
+  "stock_bas",
+] as const;
 
 const COMMERCIAL_RARITIES = new Set([
   "common",

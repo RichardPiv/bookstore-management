@@ -1,5 +1,7 @@
 import {
   ACTIVE_ALERT_STATUS_NAMES,
+  RESERVE_LOW_ALERT_TYPE_NAMES,
+  RESERVE_OUT_ALERT_TYPE_NAMES,
   RESOLVED_ALERT_STATUS_NAMES,
   SHELF_LOW_ALERT_TYPE_NAMES,
   SHELF_OUT_ALERT_TYPE_NAMES,
@@ -42,6 +44,8 @@ const ACTIVE_SET = new Set<string>(ACTIVE_ALERT_STATUS_NAMES);
 const RESOLVED_SET = new Set<string>(RESOLVED_ALERT_STATUS_NAMES);
 const SHELF_LOW_SET = new Set<string>(SHELF_LOW_ALERT_TYPE_NAMES);
 const SHELF_OUT_SET = new Set<string>(SHELF_OUT_ALERT_TYPE_NAMES);
+const RESERVE_LOW_SET = new Set<string>(RESERVE_LOW_ALERT_TYPE_NAMES);
+const RESERVE_OUT_SET = new Set<string>(RESERVE_OUT_ALERT_TYPE_NAMES);
 
 export const ALERT_STATUS_LABELS: Record<string, string> = {
   active: "Active",
@@ -59,6 +63,10 @@ export const ALERT_TYPE_LABELS: Record<string, string> = {
   rupture_rayon: "Rupture rayon",
   shelf_out: "Rupture rayon",
   stockout: "Rupture rayon",
+  stock_bas: "Réserve basse",
+  reserve_low: "Réserve basse",
+  rupture_stock: "Rupture réserve",
+  reserve_out: "Rupture réserve",
 };
 
 export function getAlertStatusLabel(statusName: string | null | undefined) {
@@ -89,6 +97,16 @@ export function isShelfOutAlert(typeName: string | null | undefined) {
 export function isShelfLowAlert(typeName: string | null | undefined) {
   if (!typeName) return false;
   return SHELF_LOW_SET.has(typeName);
+}
+
+export function isReserveOutAlert(typeName: string | null | undefined) {
+  if (!typeName) return false;
+  return RESERVE_OUT_SET.has(typeName);
+}
+
+export function isReserveLowAlert(typeName: string | null | undefined) {
+  if (!typeName) return false;
+  return RESERVE_LOW_SET.has(typeName);
 }
 
 export function formatAlertDate(value: string | Date) {

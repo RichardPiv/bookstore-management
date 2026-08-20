@@ -1,5 +1,6 @@
 "use client";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import useCatalogueCart from "./useCatalogueCart";
@@ -28,12 +29,7 @@ export default function CatalogCartModal() {
     >
       <div className="absolute inset-0" onClick={closeCart} aria-hidden />
 
-      <div className="border-ornamental relative z-10 flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden bg-surface-container-low shadow-2xl">
-        <div className="catalog-corner catalog-corner-tl" aria-hidden />
-        <div className="catalog-corner catalog-corner-tr" aria-hidden />
-        <div className="catalog-corner catalog-corner-bl" aria-hidden />
-        <div className="catalog-corner catalog-corner-br" aria-hidden />
-
+      <OrnamentalFrame className="relative z-10 flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden bg-surface-container-low shadow-2xl">
         <div className="border-b border-outline-variant/40 bg-surface-container px-6 py-5 sm:px-8">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -196,7 +192,7 @@ export default function CatalogCartModal() {
             </Button>
           </div>
         </div>
-      </div>
+      </OrnamentalFrame>
     </div>
   );
 }

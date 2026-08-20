@@ -5,9 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  RESOLVED_ALERT_STATUS_NAMES,
-} from "@/lib/alert-references";
+import { RESOLVED_ALERT_STATUS_NAMES } from "@/lib/alert-references";
 
 import AlertCard from "./AlertCard";
 import AlertDetail from "./AlertDetail";
@@ -19,7 +17,7 @@ import {
   type LoadStatus,
 } from "./alert-data";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 6;
 
 const FILTERS: { id: AlertFilter; label: string }[] = [
   { id: "active", label: "Actives" },

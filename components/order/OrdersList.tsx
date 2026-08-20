@@ -8,7 +8,7 @@ import OrderDetail from "./OrderDetail";
 import { type LoadStatus, type Order } from "./order-data";
 import { Button } from "../ui/button";
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 6;
 
 export default function OrdersList() {
   const [status, setStatus] = useState<LoadStatus>("loading");

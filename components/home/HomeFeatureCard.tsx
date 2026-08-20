@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
+
 type HomeFeatureCardProps = {
   icon: LucideIcon;
   sectionId: string;
@@ -17,9 +19,10 @@ export default function HomeFeatureCard({
   footer,
 }: HomeFeatureCardProps) {
   return (
-    <article className="home-l-corner-container bg-surface-container-lowest/50 backdrop-blur-sm transition-colors duration-500 hover:bg-surface-container/60">
-      <div className="home-corner-bottom-left" />
-      <div className="home-corner-bottom-right" />
+    <OrnamentalFrame
+      as="article"
+      className="bg-surface-container-lowest/50 p-8 backdrop-blur-sm transition-colors duration-500 hover:bg-surface-container/60"
+    >
       <div className="mb-6 flex items-start justify-between">
         <Icon className="size-8 text-primary" aria-hidden />
         <span className="font-label text-[10px] text-outline">{sectionId}</span>
@@ -34,6 +37,6 @@ export default function HomeFeatureCard({
       <div className="flex items-center gap-2 font-label text-[10px] tracking-tighter text-burnished-gold uppercase">
         {footer}
       </div>
-    </article>
+    </OrnamentalFrame>
   );
 }

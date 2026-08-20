@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
+
 type ReliquaryFrameProps = {
   children: React.ReactNode;
   className?: string;
@@ -13,28 +15,16 @@ export default function ReliquaryFrame({
   className,
   variant = "default",
   parchment = false,
-  showCorners = true,
 }: ReliquaryFrameProps) {
-  const cornerClass = variant === "error" ? "border-error/50" : undefined;
-
   return (
-    <div
+    <OrnamentalFrame
       className={cn(
-        "reliquary-border relative",
         parchment && "parchment-texture",
         variant === "error" && "border-error/40",
         className,
       )}
     >
-      {showCorners && (
-        <>
-          <div className={cn("corner-ornament corner-tl", cornerClass)} />
-          <div className={cn("corner-ornament corner-tr", cornerClass)} />
-          <div className={cn("corner-ornament corner-bl", cornerClass)} />
-          <div className={cn("corner-ornament corner-br", cornerClass)} />
-        </>
-      )}
       {children}
-    </div>
+    </OrnamentalFrame>
   );
 }

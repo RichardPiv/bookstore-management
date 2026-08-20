@@ -1,5 +1,6 @@
 "use client";
 
+import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,21 +26,17 @@ export default function StockCard({
   const canTransfer = getMaxTransferQty(stock) > 0;
 
   return (
-    <button
+    <OrnamentalFrame
+      as="button"
       type="button"
       onClick={onSelect}
       className={cn(
-        "border-ornamental group relative w-full cursor-pointer bg-surface-container-low p-6 text-left transition-colors",
+        "group w-full cursor-pointer bg-surface-container-low p-6 text-left transition-colors",
         selected
           ? "border-primary/60 bg-primary/5"
           : "hover:border-primary/40 hover:bg-surface-container",
       )}
     >
-      <div className="catalog-corner catalog-corner-tl" aria-hidden />
-      <div className="catalog-corner catalog-corner-tr" aria-hidden />
-      <div className="catalog-corner catalog-corner-bl" aria-hidden />
-      <div className="catalog-corner catalog-corner-br" aria-hidden />
-
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-3">
@@ -105,6 +102,6 @@ export default function StockCard({
           </span>
         </div>
       </div>
-    </button>
+    </OrnamentalFrame>
   );
 }
