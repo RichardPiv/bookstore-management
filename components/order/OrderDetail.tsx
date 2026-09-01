@@ -92,7 +92,7 @@ export default function OrderDetail({
   }
 
   return (
-    <OrnamentalFrame className="sticky top-6 bg-surface-container-low p-6">
+    <OrnamentalFrame className="bg-surface-container-low p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -156,7 +156,9 @@ export default function OrderDetail({
         </p>
         <div className="custom-scroll max-h-[48vh] space-y-3 overflow-y-auto pr-1">
           {(order.lines ?? []).map((line) => {
-            const unitPrice = Number(line.book?.purchase_price ?? 0);
+            const unitPrice = Number(
+              line.unit_purchase_price ?? line.book?.purchase_price ?? 0,
+            );
             const lineTotal = unitPrice * line.qty;
 
             return (
@@ -218,7 +220,7 @@ export default function OrderDetail({
           <span className="material-symbols-outlined" aria-hidden>
             {isReceiving ? "progress_activity" : "inventory_2"}
           </span>
-          {isReceiving ? "Réception…" : "Réceptionner la commande"}
+          {isReceiving ? "Réception…" : "Réceptionner"}
         </Button>
       ) : (
         <div className="border border-primary/30 bg-primary/5 px-4 py-3 text-center">

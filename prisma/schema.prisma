@@ -126,11 +126,12 @@ model orders {
 }
 
 model orders_lines {
-  id          Int @id @default(autoincrement())
-  order_id    Int @db.UnsignedInt
-  book_id     Int @db.UnsignedInt
-  supplier_id Int @db.UnsignedInt
-  qty         Int @db.UnsignedInt
+  id                   Int     @id @default(autoincrement())
+  order_id             Int     @db.UnsignedInt
+  book_id              Int     @db.UnsignedInt
+  supplier_id          Int     @db.UnsignedInt
+  qty                  Int     @db.UnsignedInt
+  unit_purchase_price  Decimal @db.Decimal(10, 2)
 
   @@index([book_id], map: "book_id")
   @@index([order_id], map: "order_id")
@@ -177,4 +178,38 @@ model simulation_events {
 
   @@index([simulation_run_id], map: "simulation_run_id")
   @@index([book_id], map: "book_id")
+}
+
+/** Solde unique de la librairie (D60). Une ligne au MVP. */
+model treasury_account {
+  id            Int      @id @default(autoincrement())
+  balance       Decimal  @db.Decimal(10, 2)
+  low_threshold Decimal  @default(1000.00) @db.Decimal(10, 2)
+  updated_at    DateTime @default(now()) @db.DateTime(0)
+}
+
+/**
+ * Journal des mouvements de florins (D60–D67).
+ * type: supplier_purchase | customer_sale | adjustment_in | adjustment_out
+ */
+model treasury_movements {
+  id                   Int      @id @default(autoincrement())
+  type                 String   @db.VarChar(32)
+  amount               Decimal  @db.Decimal(10, 2)
+  balance_after        Decimal  @db.Decimal(10, 2)
+  unit_price           Decimal? @db.Decimal(10, 2)
+  qty                  Int?     @db.UnsignedInt
+  order_id             Int?
+  order_line_id        Int?
+  book_id              Int?
+  simulation_event_id  Int?
+  note                 String?  @db.VarChar(255)
+  created_at           DateTime @default(now()) @db.DateTime(0)
+
+  @@index([type], map: "idx_treasury_movements_type")
+  @@index([created_at], map: "idx_treasury_movements_created_at")
+  @@index([order_id], map: "idx_treasury_movements_order_id")
+  @@index([order_line_id], map: "idx_treasury_movements_order_line_id")
+  @@index([book_id], map: "idx_treasury_movements_book_id")
+  @@index([simulation_event_id], map: "idx_treasury_movements_simulation_event_id")
 }

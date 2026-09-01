@@ -37,6 +37,13 @@ export type DashboardOverview = {
   };
   sales: {
     purchases_today: number;
+    /** Somme des crédits customer_sale du jour (florins). */
+    revenue_today: string;
+  };
+  treasury: {
+    balance: string;
+    low_threshold: string;
+    is_low: boolean;
   };
   alerts: {
     active_count: number;

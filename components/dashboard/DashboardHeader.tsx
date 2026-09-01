@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
 
+import HeaderTreasuryBalance from "@/components/dashboard/HeaderTreasuryBalance";
+
 const HEADER_ACTIONS = [
   { icon: "search", label: "Rechercher" },
   { icon: "notifications", label: "Notifications" },
@@ -25,6 +27,8 @@ export default function DashboardHeader() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-8">
+        <HeaderTreasuryBalance />
+
         <div className="flex items-center gap-4 md:gap-6">
           {HEADER_ACTIONS.map(({ icon, label }) => (
             <Button

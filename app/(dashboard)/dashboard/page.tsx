@@ -107,9 +107,13 @@ function LowStocksPanel({ items }: { items: DashboardLowStock[] }) {
 function LogisticsPanel({
   pendingOrders,
   alerts,
+  treasuryIsLow,
+  treasuryBalance,
 }: {
   pendingOrders: number;
   alerts: DashboardAlertPreview[];
+  treasuryIsLow: boolean;
+  treasuryBalance: string;
 }) {
   return (
     <ReliquaryFrame parchment className="p-6">
@@ -137,6 +141,14 @@ function LogisticsPanel({
             <span className="text-primary">{pendingOrders}</span>
           </span>
         </li>
+        {treasuryIsLow ? (
+          <li className="flex items-start gap-3">
+            <span className="mt-1 text-error">▶</span>
+            <span className="text-error/80">
+              Trésorerie basse — {formatUnits(Number(treasuryBalance))} florins
+            </span>
+          </li>
+        ) : null}
         {alerts.length === 0 ? (
           <li className="flex items-start gap-3">
             <span className="mt-1 text-primary">▶</span>
@@ -228,14 +240,14 @@ function ActivityPanel({ events }: { events: DashboardActivityEvent[] }) {
 }
 
 function KpiCards({ overview }: { overview: DashboardOverview }) {
-  const { catalog, sales, alerts } = overview;
+  const { catalog, sales, alerts, treasury } = overview;
   const criticalRatio =
     alerts.active_count === 0
       ? 0
       : Math.round((alerts.critical_count / alerts.active_count) * 100);
 
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
       <ReliquaryFrame
         parchment
         className="group p-8 transition-all duration-300 hover:scale-[1.01]"
@@ -296,8 +308,7 @@ function KpiCards({ overview }: { overview: DashboardOverview }) {
           </span>
         </div>
         <p className="mt-2 font-label-sm text-[10px] text-on-surface-variant">
-          Commandes fournisseur en attente :{" "}
-          {formatUnits(overview.orders.pending_count)}
+          CA du jour : {formatUnits(Number(sales.revenue_today))} florins
         </p>
         <div className="mt-6 space-y-2">
           <div className="flex justify-between font-label-sm text-[10px] text-on-surface-variant uppercase">
@@ -388,6 +399,68 @@ function KpiCards({ overview }: { overview: DashboardOverview }) {
           />
         </div>
       </ReliquaryFrame>
+
+      <ReliquaryFrame
+        parchment
+        variant={treasury.is_low ? "error" : "default"}
+        className="group p-8 transition-all duration-300 hover:scale-[1.01]"
+      >
+        <div className="mb-6 flex items-center justify-between">
+          <p
+            className={cn(
+              "font-label-sm text-[10px] tracking-widest uppercase",
+              treasury.is_low ? "text-error/60" : "text-burnished-gold/60",
+            )}
+          >
+            Trésorerie / Florins
+          </p>
+          <span
+            className={cn(
+              "material-symbols-outlined text-xl",
+              treasury.is_low ? "text-error" : "text-primary",
+            )}
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            payments
+          </span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <h3
+            className={cn(
+              "font-headline-xl text-5xl",
+              treasury.is_low ? "text-error" : "text-primary",
+            )}
+          >
+            {formatUnits(Number(treasury.balance))}
+          </h3>
+          <span
+            className={cn(
+              "font-label-sm text-xs",
+              treasury.is_low ? "text-error/40" : "text-burnished-gold/40",
+            )}
+          >
+            Florins
+          </span>
+        </div>
+        <p
+          className={cn(
+            "mt-2 font-label-sm text-[10px]",
+            treasury.is_low ? "text-error/70" : "text-on-surface-variant",
+          )}
+        >
+          {treasury.is_low
+            ? `Solde sous le seuil (${formatUnits(Number(treasury.low_threshold))} F)`
+            : `Seuil d'alerte : ${formatUnits(Number(treasury.low_threshold))} F`}
+        </p>
+        <div className="mt-6">
+          <Link
+            href="/treasury"
+            className="font-label-sm text-[10px] tracking-widest text-burnished-gold/50 uppercase transition-colors hover:text-primary"
+          >
+            Voir le journal →
+          </Link>
+        </div>
+      </ReliquaryFrame>
     </div>
   );
 }
@@ -460,6 +533,8 @@ export default async function DashboardPage() {
             <LogisticsPanel
               pendingOrders={overview.orders.pending_count}
               alerts={overview.recent_alerts}
+              treasuryIsLow={overview.treasury.is_low}
+              treasuryBalance={overview.treasury.balance}
             />
           </div>
         </div>

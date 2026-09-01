@@ -10,6 +10,7 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/catalog", label: "Catalogue", match: "prefix" },
   { href: "/stocks", label: "Stocks", match: "prefix" },
   { href: "/orders", label: "Commandes", match: "prefix" },
+  { href: "/treasury", label: "Trésorerie", match: "prefix" },
   { href: "/alerts", label: "Alertes", variant: "alert", match: "prefix" },
   { href: "/simulation", label: "Simulation", match: "prefix" },
 ];

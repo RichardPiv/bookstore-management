@@ -1,6 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
+
 import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
+import {
+  treasuryBalanceAmount,
+  useTreasuryBalanceOptional,
+} from "@/components/treasury/TreasuryBalanceProvider";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import useCatalogueCart from "./useCatalogueCart";
@@ -18,6 +24,22 @@ export default function CatalogCartModal() {
     updateItemQuantity,
     clearCart,
   } = useCatalogueCart();
+
+  const treasuryCtx = useTreasuryBalanceOptional();
+  const refreshTreasury = treasuryCtx?.refreshTreasury;
+
+  useEffect(() => {
+    if (isCartOpen && refreshTreasury) {
+      void refreshTreasury();
+    }
+  }, [isCartOpen, refreshTreasury]);
+
+  const treasuryBalance = treasuryCtx?.overview
+    ? treasuryBalanceAmount(treasuryCtx.overview)
+    : null;
+
+  const insufficientBalance =
+    treasuryBalance !== null && total > treasuryBalance;
 
   return (
     <div
@@ -177,11 +199,30 @@ export default function CatalogCartModal() {
               <p className="mt-1 font-headline text-2xl text-primary">
                 {total.toLocaleString("fr-FR")} Florins
               </p>
+              {treasuryBalance !== null ? (
+                <p
+                  className={cn(
+                    "mt-1 font-body text-xs",
+                    insufficientBalance
+                      ? "text-error"
+                      : "text-on-surface-variant",
+                  )}
+                >
+                  Solde disponible : {treasuryBalance.toLocaleString("fr-FR")} F
+                </p>
+              ) : null}
             </div>
+
+            {insufficientBalance ? (
+              <p className="font-body text-sm text-error sm:max-w-xs" role="alert">
+                Solde insuffisant pour cette commande. Réduisez le panier ou
+                ajustez la trésorerie.
+              </p>
+            ) : null}
 
             <Button
               onClick={checkout}
-              disabled={total === 0}
+              disabled={total === 0 || insufficientBalance}
               size="lg"
               className="min-w-[220px]"
             >

@@ -15,19 +15,6 @@ function assertPositiveInt(
   }
 }
 
-function assertBoolean(
-  value: unknown,
-  field: string,
-): asserts value is boolean {
-  if (typeof value !== "boolean") {
-    throw new AppError(
-      "VALIDATION_ERROR",
-      `The field "${field}" must be a boolean.`,
-      400,
-    );
-  }
-}
-
 function assertNoDuplicateBookIds(lines: CreateOrderLineInput[]) {
   const bookIds = lines.map((line) => line.book_id);
   if (new Set(bookIds).size !== bookIds.length) {
@@ -76,19 +63,12 @@ export function validateCreateOrderInput(body: unknown): CreateOrderInput {
     throw new AppError("VALIDATION_ERROR", "Invalid request body.", 400);
   }
 
-  const { user_id, immediate, lines } = body as Record<string, unknown>;
+  const { user_id, lines } = body as Record<string, unknown>;
 
   assertPositiveInt(user_id, "user_id");
 
-  let immediateValue = true;
-  if (immediate !== undefined) {
-    assertBoolean(immediate, "immediate");
-    immediateValue = immediate;
-  }
-
   return {
     user_id,
-    immediate: immediateValue,
     lines: assertOrderLines(lines),
   };
 }

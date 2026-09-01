@@ -28,7 +28,7 @@ export default function CatalogBookCard({ book }: CatalogBookCardProps) {
     >
       <Link
         href={`/catalog/${book.id}`}
-        className="relative mb-6 aspect-[4/3] w-full border border-outline-variant bg-surface p-1"
+        className="relative mx-auto mb-5 aspect-[3/4] w-[72%] max-w-[220px] border border-outline-variant bg-surface p-1"
       >
         {book.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

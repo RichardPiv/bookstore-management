@@ -1,9 +1,10 @@
 import { AppError } from "@/lib/api/route-errors";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma } from "@/lib/generated/prisma/client";
 import { inventoryPublicSelect } from "@/services/inventory/types";
 import type { StockPublic } from "@/services/stocks/types";
 import { decrementShelfStock } from "@/services/stocks/stocks-service";
+import { recordSale } from "@/services/treasury/treasury-service";
 
 import {
   simulationEventSelect,
@@ -137,6 +138,8 @@ export async function runSimulation(
 
         try {
           const updated = await decrementShelfStock(book.id, 1, tx);
+          const unitSalePrice = new Prisma.Decimal(updated.sale_price);
+
           const bookIndex = purchasableBooks.findIndex(
             (candidate) => candidate.id === book.id,
           );
@@ -147,20 +150,33 @@ export async function runSimulation(
             }
           }
 
-          events.push(
-            await logSimulationEvent(
-              run.id,
-              {
-                type: "CUSTOMER_PURCHASE",
-                message: `Un client a acheté un "${updated.title}" (stock restant : ${updated.qty_shelf}).`,
-                book_id: updated.id,
-                metadata: JSON.stringify({
-                  qty_shelf_after: updated.qty_shelf,
-                }),
-              },
-              tx,
-            ),
+          const event = await logSimulationEvent(
+            run.id,
+            {
+              type: "CUSTOMER_PURCHASE",
+              message: `Un client a acheté un "${updated.title}" pour ${unitSalePrice.toFixed(2)} florins (stock restant : ${updated.qty_shelf}).`,
+              book_id: updated.id,
+              metadata: JSON.stringify({
+                qty_shelf_after: updated.qty_shelf,
+                unit_sale_price: unitSalePrice.toFixed(2),
+                qty: 1,
+              }),
+            },
+            tx,
           );
+
+          await recordSale(
+            {
+              book_id: updated.id,
+              qty: 1,
+              unit_price: unitSalePrice,
+              simulation_event_id: event.id,
+              note: `Vente simulation #${run.id} — ${updated.title}`,
+            },
+            tx,
+          );
+
+          events.push(event);
         } catch (error) {
           if (error instanceof AppError && error.code === "BUSINESS_RULE") {
             events.push(

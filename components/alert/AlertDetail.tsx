@@ -107,7 +107,7 @@ export default function AlertDetail({
   }
 
   return (
-    <OrnamentalFrame className="sticky top-6 bg-surface-container-low p-6">
+    <OrnamentalFrame className="bg-surface-container-low p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">

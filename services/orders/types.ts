@@ -24,6 +24,7 @@ export type OrderLinePublic = {
   book_id: number;
   supplier_id: number;
   qty: number;
+  unit_purchase_price: Prisma.Decimal;
   book: BookRefPublic | null;
   supplier: SupplierPublic | null;
 };
@@ -43,7 +44,6 @@ export type CreateOrderLineInput = {
 
 export type CreateOrderInput = {
   user_id: number;
-  immediate: boolean;
   lines: CreateOrderLineInput[];
 };
 

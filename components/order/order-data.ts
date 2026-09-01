@@ -25,6 +25,7 @@ export type OrderLine = {
   book_id: number;
   supplier_id: number;
   qty: number;
+  unit_purchase_price?: number | string;
   book: OrderBook | null;
   supplier: OrderSupplier | null;
 };
@@ -115,7 +116,9 @@ export function getOrderLinesCount(order: Order) {
 
 export function getOrderTotal(order: Order) {
   return (order.lines ?? []).reduce((total, line) => {
-    const unitPrice = Number(line.book?.purchase_price ?? 0);
+    const unitPrice = Number(
+      line.unit_purchase_price ?? line.book?.purchase_price ?? 0,
+    );
     return total + unitPrice * line.qty;
   }, 0);
 }

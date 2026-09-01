@@ -177,8 +177,8 @@ export default function AlertsList() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        <div className="flex flex-col gap-6 lg:col-span-6">
+      <div className="flex flex-col gap-8 lg:flex-row">
+        <div className="flex min-w-0 flex-1 flex-col gap-6">
           {filteredAlerts.length === 0 ? (
             <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-16 text-center">
               <span
@@ -251,12 +251,14 @@ export default function AlertsList() {
           )}
         </div>
 
-        <div className="flex flex-col gap-8 lg:col-span-6">
-          <AlertDetail
-            alert={selectedAlert}
-            resolvedStatus={resolvedStatus}
-            onAlertUpdated={handleAlertUpdated}
-          />
+        <div className="min-w-0 flex-1">
+          <div className="sticky top-6 z-10 w-full">
+            <AlertDetail
+              alert={selectedAlert}
+              resolvedStatus={resolvedStatus}
+              onAlertUpdated={handleAlertUpdated}
+            />
+          </div>
         </div>
       </div>
     </div>

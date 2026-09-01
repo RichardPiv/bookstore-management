@@ -12,21 +12,23 @@ import {
   resolveDeliveryStatusId,
   resolveOrderStatusId,
 } from "@/lib/resolve-reference-status";
-import type { Prisma } from "@/lib/generated/prisma/client";
+import { Prisma } from "@/lib/generated/prisma/client";
 import {
   deliveryPublicSelect,
   type DeliveryWithStatus,
 } from "@/services/deliveries/types";
 import { deliveryStatusSelect } from "@/services/delivery_statuses/types";
-import type { DeliveryStatusPublic } from "@/services/delivery_statuses/types";
 import { orderStatusSelect } from "@/services/order_statuses/types";
-import type { OrderStatusPublic } from "@/services/order_statuses/types";
 import {
   fetchInventoriesByBookIds,
   incrementReserveStock,
 } from "@/services/inventory/inventory-service";
 import type { BookRefPublic } from "@/services/stocks/types";
-import { supplierSelect, type SupplierPublic } from "@/services/suppliers/types";
+import { supplierSelect } from "@/services/suppliers/types";
+import {
+  applyDebit,
+  getAccount,
+} from "@/services/treasury/treasury-service";
 
 import {
   orderPublicSelect,
@@ -39,6 +41,69 @@ import { validateCreateOrderInput } from "./validation";
 
 type TransactionClient = Prisma.TransactionClient;
 
+type PricedOrderLine = {
+  id?: number;
+  book_id: number;
+  supplier_id: number;
+  qty: number;
+  unit_purchase_price: Prisma.Decimal;
+};
+
+function linePurchaseTotal(line: {
+  qty: number;
+  unit_purchase_price: Prisma.Decimal;
+}): Prisma.Decimal {
+  return line.unit_purchase_price.mul(line.qty);
+}
+
+function sumPurchaseTotal(
+  lines: { qty: number; unit_purchase_price: Prisma.Decimal }[],
+): Prisma.Decimal {
+  return lines.reduce(
+    (sum, line) => sum.plus(linePurchaseTotal(line)),
+    new Prisma.Decimal(0),
+  );
+}
+
+/** Debit treasury once per order line (D62–D65). */
+async function debitSupplierPurchaseLines(
+  orderId: number,
+  lines: {
+    id: number;
+    book_id: number;
+    qty: number;
+    unit_purchase_price: Prisma.Decimal;
+  }[],
+  tx: TransactionClient,
+) {
+  const total = sumPurchaseTotal(lines);
+  const account = await getAccount(tx);
+
+  if (account.balance.lessThan(total)) {
+    throw new AppError(
+      "BUSINESS_RULE",
+      "Insufficient treasury balance.",
+      409,
+    );
+  }
+
+  for (const line of lines) {
+    await applyDebit(
+      {
+        type: "supplier_purchase",
+        amount: linePurchaseTotal(line),
+        unit_price: line.unit_purchase_price,
+        qty: line.qty,
+        order_id: orderId,
+        order_line_id: line.id,
+        book_id: line.book_id,
+        note: `Commande fournisseur #${orderId} — ligne #${line.id}`,
+      },
+      tx,
+    );
+  }
+}
+
 async function assertUserExists(userId: number, tx: TransactionClient) {
   const user = await tx.users.findUnique({
     where: { id: userId },
@@ -50,10 +115,13 @@ async function assertUserExists(userId: number, tx: TransactionClient) {
   }
 }
 
-async function assertBookOrderable(bookId: number, tx: TransactionClient) {
+async function assertBookOrderable(
+  bookId: number,
+  tx: TransactionClient,
+): Promise<{ id: number; purchase_price: Prisma.Decimal }> {
   const book = await tx.books.findUnique({
     where: { id: bookId },
-    select: { id: true, is_active: true },
+    select: { id: true, is_active: true, purchase_price: true },
   });
 
   if (!book) {
@@ -67,6 +135,8 @@ async function assertBookOrderable(bookId: number, tx: TransactionClient) {
       409,
     );
   }
+
+  return { id: book.id, purchase_price: book.purchase_price };
 }
 
 async function assertSupplierExists(
@@ -192,6 +262,7 @@ async function enrichOrder(
     book_id: line.book_id,
     supplier_id: line.supplier_id,
     qty: line.qty,
+    unit_purchase_price: line.unit_purchase_price,
     book: booksById.get(line.book_id) ?? null,
     supplier: suppliersById.get(line.supplier_id) ?? null,
   }));
@@ -237,28 +308,42 @@ export async function getOrderById(
   return enrichOrder(order);
 }
 
-/** Create a supplier order (immediate reception by default — D31). */
+/** Create a supplier order (pending reception — debit at validation, stock at /receive). */
 export async function createOrder(body: unknown): Promise<OrderWithDetails> {
   const input = validateCreateOrderInput(body);
 
   return prisma.$transaction(async (tx) => {
     await assertUserExists(input.user_id, tx);
 
+    const pricedLines: PricedOrderLine[] = [];
+
     for (const line of input.lines) {
-      await assertBookOrderable(line.book_id, tx);
+      const book = await assertBookOrderable(line.book_id, tx);
       await assertSupplierExists(line.supplier_id, tx);
+      pricedLines.push({
+        book_id: line.book_id,
+        supplier_id: line.supplier_id,
+        qty: line.qty,
+        unit_purchase_price: book.purchase_price,
+      });
+    }
+
+    const total = sumPurchaseTotal(pricedLines);
+    const account = await getAccount(tx);
+    if (account.balance.lessThan(total)) {
+      throw new AppError(
+        "BUSINESS_RULE",
+        "Insufficient treasury balance.",
+        409,
+      );
     }
 
     const deliveryStatusId = await resolveDeliveryStatusId(
-      input.immediate
-        ? DELIVERED_DELIVERY_STATUS_NAMES
-        : PENDING_DELIVERY_STATUS_NAMES,
+      PENDING_DELIVERY_STATUS_NAMES,
       tx,
     );
     const orderStatusId = await resolveOrderStatusId(
-      input.immediate
-        ? RECEIVED_ORDER_STATUS_NAMES
-        : IN_PROGRESS_ORDER_STATUS_NAMES,
+      IN_PROGRESS_ORDER_STATUS_NAMES,
       tx,
     );
 
@@ -282,19 +367,28 @@ export async function createOrder(body: unknown): Promise<OrderWithDetails> {
     });
 
     await tx.orders_lines.createMany({
-      data: input.lines.map((line) => ({
+      data: pricedLines.map((line) => ({
         order_id: order.id,
         book_id: line.book_id,
         supplier_id: line.supplier_id,
         qty: line.qty,
+        unit_purchase_price: line.unit_purchase_price,
       })),
     });
 
-    if (input.immediate) {
-      for (const line of input.lines) {
-        await incrementBookReserve(line.book_id, line.qty, tx);
-      }
-    }
+    const createdLines = await tx.orders_lines.findMany({
+      where: { order_id: order.id },
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        book_id: true,
+        qty: true,
+        unit_purchase_price: true,
+      },
+    });
+
+    // Debit treasury at order validation (panier « Commander »). Stock at /receive.
+    await debitSupplierPurchaseLines(order.id, createdLines, tx);
 
     return enrichOrder(order, tx);
   });
@@ -323,10 +417,20 @@ export async function receiveOrder(id: number): Promise<OrderWithDetails> {
 
     const lines = await tx.orders_lines.findMany({
       where: { order_id: id },
+      orderBy: { id: "asc" },
+      select: {
+        id: true,
+        book_id: true,
+        qty: true,
+        unit_purchase_price: true,
+      },
     });
 
     for (const line of lines) {
       await assertBookOrderable(line.book_id, tx);
+    }
+
+    for (const line of lines) {
       await incrementBookReserve(line.book_id, line.qty, tx);
     }
 

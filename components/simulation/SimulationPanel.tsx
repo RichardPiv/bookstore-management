@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 
 import SimulationLaunch from "./SimulationLaunch";
 import SimulationRunView from "./SimulationRunView";
+import { useTreasuryBalanceOptional } from "@/components/treasury/TreasuryBalanceProvider";
 import {
   DEFAULT_EVENTS_COUNT,
   MAX_EVENTS_COUNT,
@@ -19,6 +20,7 @@ export default function SimulationPanel() {
   const [run, setRun] = useState<SimulationRun | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const treasuryBalance = useTreasuryBalanceOptional();
 
   const title =
     phase === "idle"
@@ -79,6 +81,7 @@ export default function SimulationPanel() {
       if (body.data) {
         setRun(body.data as SimulationRun);
         setPhase("done");
+        await treasuryBalance?.refreshTreasury();
       } else {
         setErrorMessage("Réponse de simulation invalide.");
         setPhase("idle");

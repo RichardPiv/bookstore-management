@@ -4,6 +4,7 @@
  * - auteurs (auteurs.json + auteurs rencontrés dans le catalogue)
  * - 1 fournisseur MVP
  * - order_statuses / delivery_statuses / alert_statuses / alert_types
+ * - treasury_account (capital initial si absent — D61)
  * - ~671 livres (JSON catalogue → books + books_authors)
  *
  * Champs générés (déterministes via lore_code) : ean, isbn, publication_date
@@ -571,6 +572,30 @@ async function seedBooks(
   }
 }
 
+async function seedTreasuryAccount(prisma: PrismaClient) {
+  const existing = await prisma.treasury_account.findUnique({
+    where: { id: 1 },
+    select: { id: true, balance: true },
+  });
+
+  if (existing) {
+    console.log(
+      `treasury_account: déjà présent (id=${existing.id}, balance=${existing.balance})`,
+    );
+    return;
+  }
+
+  await prisma.treasury_account.create({
+    data: {
+      id: 1,
+      balance: 10000,
+      low_threshold: 1000,
+      updated_at: new Date(),
+    },
+  });
+  console.log("treasury_account: créé (balance=10000, low_threshold=1000)");
+}
+
 async function main() {
   const prisma = createClient();
   try {
@@ -585,6 +610,7 @@ async function main() {
     const authorCache = await seedAuthors(prisma, authorNamesFromBooks);
     await seedSupplier(prisma);
     await seedReferenceStatuses(prisma);
+    await seedTreasuryAccount(prisma);
     await seedBooks(prisma, authorCache);
   } finally {
     await prisma.$disconnect();

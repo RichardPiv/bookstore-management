@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { Cart, CartContextType, CartItem } from "./catalog-data";
+import { useTreasuryBalanceOptional } from "@/components/treasury/TreasuryBalanceProvider";
 
 const CART_STORAGE_KEY = "catalog-cart";
 
@@ -78,7 +79,9 @@ async function completeCheckout(cart: Cart) {
     ]);
 
     if (!userId || !supplierId) {
-      throw new Error("Impossible de résoudre l'utilisateur ou le fournisseur.");
+      throw new Error(
+        "Impossible de résoudre l'utilisateur ou le fournisseur.",
+      );
     }
 
     const ordersResponse = await fetch("/api/orders", {
@@ -88,7 +91,6 @@ async function completeCheckout(cart: Cart) {
       },
       body: JSON.stringify({
         user_id: userId,
-        immediate: true,
         lines: cart.items.map((item) => ({
           book_id: Number(item.book.id),
           supplier_id: supplierId,
@@ -180,6 +182,7 @@ export default function CartProvider({
   const [isHydrated, setIsHydrated] = useState(false);
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const treasuryBalance = useTreasuryBalanceOptional();
 
   function openCart() {
     setIsCartOpen(true);
@@ -230,6 +233,7 @@ export default function CartProvider({
     if (success) {
       dispatch({ type: "CLEAR_CART" });
       closeCart();
+      await treasuryBalance?.refreshTreasury();
     }
 
     return success;

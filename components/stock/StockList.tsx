@@ -105,8 +105,8 @@ export default function StockList() {
   }
 
   return (
-    <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-12">
-      <div className="flex flex-col gap-6 lg:col-span-6">
+    <div className="mt-10 flex flex-col gap-8 lg:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
         {stocks.length === 0 ? (
           <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-16 text-center">
             <span
@@ -174,11 +174,13 @@ export default function StockList() {
         )}
       </div>
 
-      <div className="flex flex-col gap-8 lg:col-span-6">
-        <StockDetail
-          stock={selectedStock}
-          onStockUpdated={handleStockUpdated}
-        />
+      <div className="min-w-0 flex-1">
+        <div className="sticky top-6 z-10 w-full">
+          <StockDetail
+            stock={selectedStock}
+            onStockUpdated={handleStockUpdated}
+          />
+        </div>
       </div>
     </div>
   );

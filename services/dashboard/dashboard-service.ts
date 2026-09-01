@@ -5,6 +5,7 @@ import {
   SHELF_OUT_ALERT_TYPE_NAMES,
 } from "@/lib/alert-references";
 import { IN_PROGRESS_ORDER_STATUS_NAMES } from "@/lib/order-statuses";
+import { getTreasuryOverview } from "@/services/treasury/treasury-service";
 
 import type {
   DashboardActivityEvent,
@@ -51,6 +52,8 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     criticalAlertTypes,
     pendingOrderStatuses,
     purchasesToday,
+    revenueTodayAgg,
+    treasuryOverview,
     lowStockRows,
     recentEvents,
   ] = await Promise.all([
@@ -77,6 +80,14 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         created_at: { gte: todayStart },
       },
     }),
+    prisma.treasury_movements.aggregate({
+      where: {
+        type: "customer_sale",
+        created_at: { gte: todayStart },
+      },
+      _sum: { amount: true },
+    }),
+    getTreasuryOverview(),
     prisma.book_inventory.findMany({
       orderBy: [{ qty_shelf: "asc" }, { updated_at: "desc" }],
       take: 40,
@@ -215,6 +226,12 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     },
     sales: {
       purchases_today: purchasesToday,
+      revenue_today: revenueTodayAgg._sum.amount?.toFixed(2) ?? "0.00",
+    },
+    treasury: {
+      balance: treasuryOverview.balance.toFixed(2),
+      low_threshold: treasuryOverview.low_threshold.toFixed(2),
+      is_low: treasuryOverview.is_low,
     },
     alerts: {
       active_count: activeCount,
