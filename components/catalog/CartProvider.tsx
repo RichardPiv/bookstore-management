@@ -8,9 +8,8 @@ import {
   useState,
 } from "react";
 import { Cart, CartContextType, CartItem } from "./catalog-data";
+import { loadCartFromStorage, saveCartToStorage } from "./cart-storage";
 import { useTreasuryBalanceOptional } from "@/components/treasury/TreasuryBalanceProvider";
-
-const CART_STORAGE_KEY = "catalog-cart";
 
 const EMPTY_CART: Cart = { items: [] };
 
@@ -22,41 +21,6 @@ type CartAction =
   | { type: "LOAD_CART"; cart: Cart };
 
 export const CartContext = createContext<CartContextType | null>(null);
-
-function isCart(value: unknown): value is Cart {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    Array.isArray((value as Cart).items)
-  );
-}
-
-function loadCartFromStorage(): Cart {
-  try {
-    const saved = localStorage.getItem(CART_STORAGE_KEY);
-    if (!saved) {
-      return EMPTY_CART;
-    }
-
-    const parsed: unknown = JSON.parse(saved);
-    return isCart(parsed) ? parsed : EMPTY_CART;
-  } catch {
-    return EMPTY_CART;
-  }
-}
-
-async function getUserId() {
-  try {
-    const userResponse = await fetch("/api/auth/me");
-    if (!userResponse.ok) {
-      throw new Error("Failed to get user");
-    }
-    const user = await userResponse.json();
-    return Number(user.data?.id);
-  } catch {
-    return null;
-  }
-}
 
 async function getSupplierId() {
   try {
@@ -73,15 +37,10 @@ async function getSupplierId() {
 
 async function completeCheckout(cart: Cart) {
   try {
-    const [userId, supplierId] = await Promise.all([
-      getUserId(),
-      getSupplierId(),
-    ]);
+    const supplierId = await getSupplierId();
 
-    if (!userId || !supplierId) {
-      throw new Error(
-        "Impossible de résoudre l'utilisateur ou le fournisseur.",
-      );
+    if (!supplierId) {
+      throw new Error("Impossible de résoudre le fournisseur.");
     }
 
     const ordersResponse = await fetch("/api/orders", {
@@ -90,7 +49,6 @@ async function completeCheckout(cart: Cart) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user_id: userId,
         lines: cart.items.map((item) => ({
           book_id: Number(item.book.id),
           supplier_id: supplierId,
@@ -195,6 +153,11 @@ export default function CartProvider({
   useEffect(() => {
     dispatch({ type: "LOAD_CART", cart: loadCartFromStorage() });
     setIsHydrated(true);
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("cart") === "open") {
+      setIsCartOpen(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -202,7 +165,7 @@ export default function CartProvider({
       return;
     }
 
-    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+    saveCartToStorage(cart);
   }, [cart, isHydrated]);
 
   const itemsCount = cart.items.reduce((acc, item) => acc + item.quantity, 0);

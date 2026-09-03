@@ -8,6 +8,7 @@ export const alertPublicSelect = {
   id: true,
   description: true,
   alert_datetime: true,
+  user_id: true,
   book_id: true,
   alert_type_id: true,
   alert_status_id: true,
@@ -26,6 +27,7 @@ export type AlertWithRelations = AlertPublic & {
 export type CreateAlertInput = {
   description: string;
   alert_datetime: Date;
+  user_id: number;
   book_id: number;
   alert_type_id: number;
   alert_status_id: number;
@@ -40,6 +42,7 @@ export type UpdateAlertInput = {
 };
 
 export type ListAlertsOptions = {
+  user_id: number;
   book_id?: number;
   alert_status_id?: number;
 };

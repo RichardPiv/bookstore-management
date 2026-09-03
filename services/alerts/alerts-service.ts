@@ -59,6 +59,7 @@ async function assertAlertStatusExists(
 }
 
 async function fetchBooksByIds(
+  userId: number,
   bookIds: number[],
   tx: TransactionClient,
 ): Promise<Map<number, BookRefPublic>> {
@@ -74,11 +75,10 @@ async function fetchBooksByIds(
         id: true,
         title: true,
         purchase_price: true,
-        sale_price: true,
         is_active: true,
       },
     }),
-    fetchInventoriesByBookIds(uniqueIds, tx),
+    fetchInventoriesByBookIds(userId, uniqueIds, tx),
   ]);
 
   return new Map(
@@ -88,7 +88,7 @@ async function fetchBooksByIds(
         id: book.id,
         title: book.title,
         purchase_price: book.purchase_price,
-        sale_price: book.sale_price,
+        sale_price: inventory?.sale_price ?? null,
         is_active: book.is_active,
         qty_reserve: inventory?.qty_reserve ?? null,
         qty_shelf: inventory?.qty_shelf ?? null,
@@ -147,10 +147,12 @@ function withRelations(
 }
 
 async function enrichAlerts(
+  userId: number,
   alerts: AlertPublic[],
   tx: TransactionClient = prisma,
 ): Promise<AlertWithRelations[]> {
   const booksById = await fetchBooksByIds(
+    userId,
     alerts.map((alert) => alert.book_id),
     tx,
   );
@@ -169,19 +171,21 @@ async function enrichAlerts(
 }
 
 async function enrichAlert(
+  userId: number,
   alert: AlertPublic,
   tx: TransactionClient = prisma,
 ): Promise<AlertWithRelations> {
-  const [enriched] = await enrichAlerts([alert], tx);
+  const [enriched] = await enrichAlerts(userId, [alert], tx);
   return enriched;
 }
 
-/** List alerts with optional filters. */
+/** List alerts for one player. */
 export async function listAlerts(
-  options: ListAlertsOptions = {},
+  options: ListAlertsOptions,
 ): Promise<AlertWithRelations[]> {
   const alerts = await prisma.alerts.findMany({
     where: {
+      user_id: options.user_id,
       book_id: options.book_id,
       alert_status_id: options.alert_status_id,
     },
@@ -189,15 +193,19 @@ export async function listAlerts(
     orderBy: { alert_datetime: "desc" },
   });
 
-  return enrichAlerts(alerts);
+  return enrichAlerts(options.user_id, alerts);
 }
 
-/** Get an alert by id. */
+/** Get an alert by id (optionally scoped to a user). */
 export async function getAlertById(
   id: number,
+  userId?: number,
 ): Promise<AlertWithRelations | null> {
-  const alert = await prisma.alerts.findUnique({
-    where: { id },
+  const alert = await prisma.alerts.findFirst({
+    where: {
+      id,
+      ...(userId !== undefined ? { user_id: userId } : {}),
+    },
     select: alertPublicSelect,
   });
 
@@ -205,11 +213,14 @@ export async function getAlertById(
     return null;
   }
 
-  return enrichAlert(alert);
+  return enrichAlert(alert.user_id, alert);
 }
 
-/** Create an alert. */
-export async function createAlert(body: unknown): Promise<AlertWithRelations> {
+/** Create an alert for a player. */
+export async function createAlert(
+  userId: number,
+  body: unknown,
+): Promise<AlertWithRelations> {
   const input = validateCreateAlertInput(body);
 
   return prisma.$transaction(async (tx) => {
@@ -218,11 +229,18 @@ export async function createAlert(body: unknown): Promise<AlertWithRelations> {
     await assertAlertStatusExists(input.alert_status_id, tx);
 
     const alert = await tx.alerts.create({
-      data: input,
+      data: {
+        description: input.description,
+        alert_datetime: input.alert_datetime,
+        user_id: userId,
+        book_id: input.book_id,
+        alert_type_id: input.alert_type_id,
+        alert_status_id: input.alert_status_id,
+      },
       select: alertPublicSelect,
     });
 
-    return enrichAlert(alert, tx);
+    return enrichAlert(userId, alert, tx);
   });
 }
 
@@ -231,6 +249,7 @@ export async function createAlertInTransaction(
   input: {
     description: string;
     alert_datetime: Date;
+    user_id: number;
     book_id: number;
     alert_type_id: number;
     alert_status_id: number;
@@ -265,17 +284,21 @@ function toAlertUpdateData(input: UpdateAlertInput): Prisma.alertsUpdateInput {
   return data;
 }
 
-/** Update an alert. */
+/** Update an alert owned by a user. */
 export async function updateAlert(
   id: number,
   body: unknown,
+  userId?: number,
 ): Promise<AlertWithRelations> {
   const input = validateUpdateAlertInput(body);
   const data = toAlertUpdateData(input);
 
   return prisma.$transaction(async (tx) => {
-    const current = await tx.alerts.findUnique({
-      where: { id },
+    const current = await tx.alerts.findFirst({
+      where: {
+        id,
+        ...(userId !== undefined ? { user_id: userId } : {}),
+      },
       select: alertPublicSelect,
     });
 
@@ -299,14 +322,20 @@ export async function updateAlert(
       select: alertPublicSelect,
     });
 
-    return enrichAlert(alert, tx);
+    return enrichAlert(alert.user_id, alert, tx);
   });
 }
 
-/** Delete an alert. */
-export async function deleteAlert(id: number): Promise<AlertWithRelations> {
-  const alert = await prisma.alerts.findUnique({
-    where: { id },
+/** Delete an alert owned by a user. */
+export async function deleteAlert(
+  id: number,
+  userId?: number,
+): Promise<AlertWithRelations> {
+  const alert = await prisma.alerts.findFirst({
+    where: {
+      id,
+      ...(userId !== undefined ? { user_id: userId } : {}),
+    },
     select: alertPublicSelect,
   });
 
@@ -315,5 +344,5 @@ export async function deleteAlert(id: number): Promise<AlertWithRelations> {
   }
 
   await prisma.alerts.delete({ where: { id } });
-  return enrichAlert(alert);
+  return enrichAlert(alert.user_id, alert);
 }

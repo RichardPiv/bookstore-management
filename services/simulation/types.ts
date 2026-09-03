@@ -16,6 +16,7 @@ export type SimulationEventPublic = Prisma.simulation_eventsGetPayload<{
 
 export const simulationRunSelect = {
   id: true,
+  user_id: true,
   started_at: true,
   ended_at: true,
 } satisfies Prisma.simulation_runsSelect;

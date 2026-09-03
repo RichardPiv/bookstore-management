@@ -51,3 +51,19 @@ export function isShelfLow(stock: Stock): boolean {
 export function isReserveEmpty(stock: Stock): boolean {
   return stock.qty_reserve <= 0;
 }
+
+export function canTransferStock(stock: Stock): boolean {
+  return stock.is_active && getMaxTransferQty(stock) > 0;
+}
+
+export type StockFilter = "watch" | "transferable" | "reserve_empty" | "all";
+
+export function matchesStockFilter(stock: Stock, filter: StockFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "watch") return isShelfLow(stock);
+  if (filter === "transferable") {
+    return stock.is_active && getMaxTransferQty(stock) > 0;
+  }
+  if (filter === "reserve_empty") return isReserveEmpty(stock);
+  return true;
+}

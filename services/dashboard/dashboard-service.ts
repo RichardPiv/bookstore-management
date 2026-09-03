@@ -24,10 +24,7 @@ const CRITICAL_ALERT_TYPE_NAMES = [
   ...RESERVE_OUT_ALERT_TYPE_NAMES,
 ] as const;
 
-const ERROR_EVENT_TYPES = new Set([
-  "NO_STOCK",
-  "UNAVAILABLE_REQUEST",
-]);
+const ERROR_EVENT_TYPES = new Set(["NO_STOCK", "UNAVAILABLE_REQUEST"]);
 
 function startOfToday(): Date {
   const now = new Date();
@@ -40,8 +37,10 @@ function clampPct(value: number): number {
   return Math.round(value);
 }
 
-/** Aggregated bookstore overview for the dashboard. */
-export async function getDashboardOverview(): Promise<DashboardOverview> {
+/** Aggregated bookstore overview for one player. */
+export async function getDashboardOverview(
+  userId: number,
+): Promise<DashboardOverview> {
   const todayStart = startOfToday();
 
   const [
@@ -51,15 +50,14 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     activeAlertStatuses,
     criticalAlertTypes,
     pendingOrderStatuses,
-    purchasesToday,
-    revenueTodayAgg,
+    playerRuns,
     treasuryOverview,
     lowStockRows,
-    recentEvents,
   ] = await Promise.all([
     prisma.books.count({ where: { is_active: true } }),
-    prisma.book_inventory.count(),
+    prisma.book_inventory.count({ where: { user_id: userId } }),
     prisma.book_inventory.aggregate({
+      where: { user_id: userId },
       _sum: { qty_shelf: true, qty_reserve: true },
     }),
     prisma.alert_statuses.findMany({
@@ -74,21 +72,13 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       where: { name: { in: [...IN_PROGRESS_ORDER_STATUS_NAMES] } },
       select: { id: true },
     }),
-    prisma.simulation_events.count({
-      where: {
-        type: "CUSTOMER_PURCHASE",
-        created_at: { gte: todayStart },
-      },
+    prisma.simulation_runs.findMany({
+      where: { user_id: userId },
+      select: { id: true },
     }),
-    prisma.treasury_movements.aggregate({
-      where: {
-        type: "customer_sale",
-        created_at: { gte: todayStart },
-      },
-      _sum: { amount: true },
-    }),
-    getTreasuryOverview(),
+    getTreasuryOverview(userId),
     prisma.book_inventory.findMany({
+      where: { user_id: userId },
       orderBy: [{ qty_shelf: "asc" }, { updated_at: "desc" }],
       take: 40,
       select: {
@@ -98,16 +88,41 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
         alert_threshold: true,
       },
     }),
-    prisma.simulation_events.findMany({
-      orderBy: { created_at: "desc" },
-      take: ACTIVITY_LIMIT,
-      select: {
-        id: true,
-        type: true,
-        message: true,
-        created_at: true,
+  ]);
+
+  const runIds = playerRuns.map((run) => run.id);
+
+  const [purchasesToday, revenueTodayAgg, recentEvents] = await Promise.all([
+    runIds.length === 0
+      ? Promise.resolve(0)
+      : prisma.simulation_events.count({
+          where: {
+            simulation_run_id: { in: runIds },
+            type: "CUSTOMER_PURCHASE",
+            created_at: { gte: todayStart },
+          },
+        }),
+    prisma.treasury_movements.aggregate({
+      where: {
+        user_id: userId,
+        type: "customer_sale",
+        created_at: { gte: todayStart },
       },
+      _sum: { amount: true },
     }),
+    runIds.length === 0
+      ? Promise.resolve([])
+      : prisma.simulation_events.findMany({
+          where: { simulation_run_id: { in: runIds } },
+          orderBy: { created_at: "desc" },
+          take: ACTIVITY_LIMIT,
+          select: {
+            id: true,
+            type: true,
+            message: true,
+            created_at: true,
+          },
+        }),
   ]);
 
   const shelfUnits = stockAgg._sum.qty_shelf ?? 0;
@@ -126,12 +141,16 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       activeStatusIds.length === 0
         ? Promise.resolve(0)
         : prisma.alerts.count({
-            where: { alert_status_id: { in: activeStatusIds } },
+            where: {
+              user_id: userId,
+              alert_status_id: { in: activeStatusIds },
+            },
           }),
       activeStatusIds.length === 0 || criticalTypeIds.length === 0
         ? Promise.resolve(0)
         : prisma.alerts.count({
             where: {
+              user_id: userId,
               alert_status_id: { in: activeStatusIds },
               alert_type_id: { in: criticalTypeIds },
             },
@@ -139,12 +158,18 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       pendingStatusIds.length === 0
         ? Promise.resolve(0)
         : prisma.orders.count({
-            where: { order_status_id: { in: pendingStatusIds } },
+            where: {
+              user_id: userId,
+              order_status_id: { in: pendingStatusIds },
+            },
           }),
       activeStatusIds.length === 0
         ? Promise.resolve([])
         : prisma.alerts.findMany({
-            where: { alert_status_id: { in: activeStatusIds } },
+            where: {
+              user_id: userId,
+              alert_status_id: { in: activeStatusIds },
+            },
             orderBy: { alert_datetime: "desc" },
             take: ALERT_PREVIEW_LIMIT,
             select: {
@@ -179,7 +204,9 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
       ? Promise.resolve([])
       : prisma.alert_types.findMany({
           where: {
-            id: { in: [...new Set(recentAlertRows.map((a) => a.alert_type_id))] },
+            id: {
+              in: [...new Set(recentAlertRows.map((a) => a.alert_type_id))],
+            },
           },
           select: { id: true, name: true },
         }),

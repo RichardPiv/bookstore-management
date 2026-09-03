@@ -2,6 +2,7 @@ import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { jsonData, jsonError } from "@/lib/api/responses";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import {
   deleteOrderStatus,
   getOrderStatusById,
@@ -15,6 +16,7 @@ type RouteContext = {
 /** GET /api/order-statuses/:id — get an order status by id */
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    await requireAuth();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -37,6 +39,7 @@ export async function GET(_request: Request, context: RouteContext) {
 /** PATCH /api/order-statuses/:id — update an order status */
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -56,6 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 /** DELETE /api/order-statuses/:id — delete an order status */
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 

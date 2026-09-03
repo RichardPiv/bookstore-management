@@ -86,6 +86,7 @@ export function validateCreateAlertInput(body: unknown): CreateAlertInput {
   return {
     description: trimmedDescription,
     alert_datetime: parseAlertDatetime(alert_datetime, "alert_datetime"),
+    user_id: 0, // filled by service from session
     book_id,
     alert_type_id,
     alert_status_id,

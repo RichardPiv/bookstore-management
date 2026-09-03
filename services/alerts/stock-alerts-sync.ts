@@ -17,6 +17,7 @@ import { inventoryPublicSelect } from "@/services/inventory/types";
 type TransactionClient = Prisma.TransactionClient;
 
 async function setAlertActive(
+  userId: number,
   bookId: number,
   typeNames: readonly string[],
   description: string,
@@ -30,6 +31,7 @@ async function setAlertActive(
   if (active) {
     const existing = await tx.alerts.findFirst({
       where: {
+        user_id: userId,
         book_id: bookId,
         alert_type_id: typeId,
         alert_status_id: activeStatusId,
@@ -42,6 +44,7 @@ async function setAlertActive(
         {
           description,
           alert_datetime: new Date(),
+          user_id: userId,
           book_id: bookId,
           alert_type_id: typeId,
           alert_status_id: activeStatusId,
@@ -54,6 +57,7 @@ async function setAlertActive(
 
   await tx.alerts.updateMany({
     where: {
+      user_id: userId,
       book_id: bookId,
       alert_type_id: typeId,
       alert_status_id: activeStatusId,
@@ -64,14 +68,15 @@ async function setAlertActive(
 
 /**
  * Create or resolve stock alerts after inventory changes (D15, D16, D30, D59).
- * No-op when the book has no book_inventory row yet.
+ * No-op when the book has no book_inventory row for this user yet.
  */
 export async function syncStockAlertsForBook(
+  userId: number,
   bookId: number,
   tx: TransactionClient,
 ): Promise<void> {
   const inventory = await tx.book_inventory.findUnique({
-    where: { book_id: bookId },
+    where: { user_id_book_id: { user_id: userId, book_id: bookId } },
     select: inventoryPublicSelect,
   });
 
@@ -98,6 +103,7 @@ export async function syncStockAlertsForBook(
   const shelfLow = !shelfOut && qty_shelf > 0 && qty_shelf <= alert_threshold;
 
   await setAlertActive(
+    userId,
     bookId,
     RESERVE_OUT_ALERT_TYPE_NAMES,
     `Rupture de réserve pour « ${title} ».`,
@@ -108,6 +114,7 @@ export async function syncStockAlertsForBook(
   );
 
   await setAlertActive(
+    userId,
     bookId,
     RESERVE_LOW_ALERT_TYPE_NAMES,
     `Réserve basse pour « ${title} » (${qty_reserve} restant${qty_reserve > 1 ? "s" : ""}).`,
@@ -118,6 +125,7 @@ export async function syncStockAlertsForBook(
   );
 
   await setAlertActive(
+    userId,
     bookId,
     SHELF_OUT_ALERT_TYPE_NAMES,
     `Rupture de rayon pour « ${title} ».`,
@@ -128,6 +136,7 @@ export async function syncStockAlertsForBook(
   );
 
   await setAlertActive(
+    userId,
     bookId,
     SHELF_LOW_ALERT_TYPE_NAMES,
     `Rayon bas pour « ${title} » (${qty_shelf} restant${qty_shelf > 1 ? "s" : ""}).`,

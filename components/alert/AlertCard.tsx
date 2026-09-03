@@ -17,12 +17,14 @@ type AlertCardProps = {
   alert: Alert;
   onSelect: () => void;
   selected?: boolean;
+  variant?: "list" | "grid";
 };
 
 export default function AlertCard({
   alert,
   onSelect,
   selected = false,
+  variant = "list",
 }: AlertCardProps) {
   const statusName = alert.alert_status?.name;
   const typeName = alert.alert_type?.name;
@@ -30,6 +32,64 @@ export default function AlertCard({
   const shelfOut = isShelfOutAlert(typeName);
   const reserveOut = isReserveOutAlert(typeName);
   const bookTitle = alert.book?.title ?? `Livre #${alert.book_id}`;
+
+  if (variant === "grid") {
+    return (
+      <OrnamentalFrame
+        as="button"
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "group flex h-full cursor-pointer flex-col bg-surface-container-low p-4 text-left transition-colors",
+          selected
+            ? "border-primary/60 bg-primary/5"
+            : "hover:border-primary/40 hover:bg-surface-container",
+        )}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              "border px-2 py-0.5 font-label text-[9px] tracking-[0.2em] uppercase",
+              active
+                ? "border-burnished-gold/40 bg-burnished-gold/10 text-burnished-gold"
+                : "border-primary/40 bg-primary/10 text-primary",
+            )}
+          >
+            {getAlertStatusLabel(statusName)}
+          </span>
+          <span
+            className={cn(
+              "border px-2 py-0.5 font-label text-[9px] tracking-[0.2em] uppercase",
+              shelfOut || reserveOut
+                ? "border-error/40 bg-error/5 text-error"
+                : "border-outline-variant/50 text-on-surface-variant",
+            )}
+          >
+            {getAlertTypeLabel(typeName)}
+          </span>
+        </div>
+
+        <h3 className="mb-2 line-clamp-2 font-headline text-base leading-tight text-primary">
+          {bookTitle}
+        </h3>
+
+        <p className="mb-4 line-clamp-3 font-body text-xs text-on-surface-variant">
+          {alert.description}
+        </p>
+
+        <p className="mb-4 font-label text-[9px] tracking-wider text-outline uppercase">
+          {formatAlertDate(alert.alert_datetime)}
+        </p>
+
+        <span className="mt-auto inline-flex items-center gap-1 font-label text-[10px] tracking-widest text-primary uppercase">
+          Consulter
+          <span className="material-symbols-outlined text-sm" aria-hidden>
+            open_in_new
+          </span>
+        </span>
+      </OrnamentalFrame>
+    );
+  }
 
   return (
     <OrnamentalFrame

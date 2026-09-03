@@ -1,12 +1,17 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import OrnamentalFrame from "@/components/ui/OrnamentalFrame";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import {
+  addStockToCart,
+  navigateToCatalogCart,
+} from "./stock-cart-actions";
 import {
   formatFlorins,
   formatStockDate,
@@ -20,17 +25,24 @@ import {
 type StockDetailProps = {
   stock: Stock | null;
   onStockUpdated?: (stock: Stock) => void;
+  embedded?: boolean;
 };
 
 export default function StockDetail({
   stock,
   onStockUpdated,
+  embedded = false,
 }: StockDetailProps) {
+  const router = useRouter();
   const [qty, setQty] = useState("1");
   const [salePrice, setSalePrice] = useState("");
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isSavingSalePrice, setIsSavingSalePrice] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [transferSuccess, setTransferSuccess] = useState<string | null>(null);
+  const [salePriceError, setSalePriceError] = useState<string | null>(null);
+  const [salePriceSuccess, setSalePriceSuccess] = useState<string | null>(null);
 
   const maxTransfer = useMemo(
     () => (stock ? getMaxTransferQty(stock) : 0),
@@ -40,10 +52,16 @@ export default function StockDetail({
   useEffect(() => {
     setTransferError(null);
     setTransferSuccess(null);
+    setSalePriceError(null);
+    setSalePriceSuccess(null);
     setIsTransferring(false);
-    setSalePrice("");
+    setIsSavingSalePrice(false);
+    setIsAddingToCart(false);
+    setSalePrice(
+      stock?.sale_price != null ? String(stock.sale_price) : "",
+    );
     setQty("1");
-  }, [stock?.book_id]);
+  }, [stock?.book_id, stock?.sale_price]);
 
   useEffect(() => {
     if (!stock) return;
@@ -60,6 +78,7 @@ export default function StockDetail({
   }, [stock, maxTransfer]);
 
   if (!stock) {
+    if (embedded) return null;
     return (
       <div className="w-full border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-10 text-center">
         <span
@@ -103,26 +122,13 @@ export default function StockDetail({
     setTransferSuccess(null);
 
     try {
-      const payload: { book_id: number; qty: number; sale_price?: number } = {
-        book_id: stock.book_id,
-        qty: parsedQty,
-      };
-
-      const trimmedSale = salePrice.trim();
-      if (trimmedSale !== "") {
-        const parsedSale = Number(trimmedSale.replace(",", "."));
-        if (!Number.isFinite(parsedSale) || parsedSale <= 0) {
-          setTransferError("Prix de vente invalide.");
-          setIsTransferring(false);
-          return;
-        }
-        payload.sale_price = parsedSale;
-      }
-
       const response = await fetch("/api/stocks/transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          book_id: stock.book_id,
+          qty: parsedQty,
+        }),
       });
       const body = await response.json();
 
@@ -146,8 +152,67 @@ export default function StockDetail({
     }
   }
 
-  return (
-    <OrnamentalFrame className="w-full bg-surface-container-low p-6">
+  async function handleSaveSalePrice(event: FormEvent) {
+    event.preventDefault();
+    if (!stock || isSavingSalePrice) return;
+
+    const parsedSale = Number(salePrice.trim().replace(",", "."));
+    if (!Number.isFinite(parsedSale) || parsedSale <= 0) {
+      setSalePriceError("Indique un prix de vente strictement positif.");
+      return;
+    }
+
+    setIsSavingSalePrice(true);
+    setSalePriceError(null);
+    setSalePriceSuccess(null);
+
+    try {
+      const response = await fetch("/api/stocks/sale-price", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          book_id: stock.book_id,
+          sale_price: parsedSale,
+        }),
+      });
+      const body = await response.json();
+
+      if (!response.ok) {
+        setSalePriceError(
+          body.error?.message ?? "Impossible d'enregistrer le prix de vente.",
+        );
+        return;
+      }
+
+      if (body.data) {
+        onStockUpdated?.(body.data as Stock);
+        setSalePriceSuccess("Prix de vente enregistré pour ta librairie.");
+      }
+    } catch {
+      setSalePriceError("Impossible de joindre les archives. Réessayez.");
+    } finally {
+      setIsSavingSalePrice(false);
+    }
+  }
+
+  function handleAddToCart() {
+    if (!stock || isAddingToCart) return;
+
+    setIsAddingToCart(true);
+    setTransferError(null);
+    setTransferSuccess(null);
+
+    try {
+      addStockToCart(stock);
+      navigateToCatalogCart(router);
+    } catch {
+      setTransferError("Impossible d'ajouter au panier. Réessayez.");
+      setIsAddingToCart(false);
+    }
+  }
+
+  const content = (
+    <>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -222,7 +287,7 @@ export default function StockDetail({
       <div className="mb-8 grid grid-cols-1 gap-4 border border-outline-variant/30 bg-surface-container p-4 sm:grid-cols-2">
         <div>
           <p className="mb-1 font-label text-[9px] tracking-[0.2em] text-outline uppercase">
-            Prix d&apos;achat
+            Prix d&apos;achat (catalogue)
           </p>
           <p className="font-body text-sm text-on-surface">
             {formatFlorins(stock.purchase_price)} florins
@@ -230,13 +295,78 @@ export default function StockDetail({
         </div>
         <div>
           <p className="mb-1 font-label text-[9px] tracking-[0.2em] text-outline uppercase">
-            Prix de vente
+            Ton prix de vente
           </p>
           <p className="font-body text-sm text-on-surface">
-            {formatFlorins(stock.sale_price)} florins
+            {stock.sale_price != null
+              ? `${formatFlorins(stock.sale_price)} florins`
+              : "Non fixé"}
           </p>
         </div>
       </div>
+
+      {stock.is_active ? (
+        <form
+          onSubmit={handleSaveSalePrice}
+          className="mb-6 flex flex-col gap-4 border border-outline-variant/30 bg-surface-container p-4"
+        >
+          <div>
+            <h4 className="mb-1 font-headline text-lg text-primary uppercase">
+              Prix de vente
+            </h4>
+            <p className="font-body text-sm text-on-surface-variant">
+              Fixé par toi pour ta librairie. Requis pour enregistrer une vente.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="stock-sale-price"
+              className="font-label text-[10px] tracking-widest text-outline uppercase"
+            >
+              Montant (florins)
+            </label>
+            <input
+              id="stock-sale-price"
+              type="text"
+              inputMode="decimal"
+              value={salePrice}
+              onChange={(e) => setSalePrice(e.target.value)}
+              disabled={isSavingSalePrice}
+              className="border border-outline-variant bg-surface px-3 py-2 font-body text-sm text-on-surface outline-none focus:border-primary disabled:opacity-50"
+            />
+          </div>
+          {salePriceError ? (
+            <p
+              className="border border-error/40 bg-error/5 px-4 py-3 font-body text-sm text-error"
+              role="alert"
+            >
+              {salePriceError}
+            </p>
+          ) : null}
+          {salePriceSuccess ? (
+            <p
+              className="border border-primary/40 bg-primary/5 px-4 py-3 font-body text-sm text-primary"
+              role="status"
+            >
+              {salePriceSuccess}
+            </p>
+          ) : null}
+          <Button
+            type="submit"
+            disabled={isSavingSalePrice}
+            className={cn("min-w-48 self-start", isSavingSalePrice && "opacity-80")}
+          >
+            {isSavingSalePrice ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                Enregistrement…
+              </>
+            ) : (
+              "Enregistrer le prix de vente"
+            )}
+          </Button>
+        </form>
+      ) : null}
 
       <form onSubmit={handleTransfer} className="flex flex-col gap-5">
         <div>
@@ -256,12 +386,39 @@ export default function StockDetail({
             Livre inactif : transfert impossible.
           </p>
         ) : reserveEmpty ? (
-          <p
-            className="border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface-variant"
-            role="status"
-          >
-            Réserve vide : passe une commande fournisseur pour réapprovisionner.
-          </p>
+          <div className="flex flex-col gap-4">
+            <p
+              className="border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface-variant"
+              role="status"
+            >
+              Réserve vide : passe une commande fournisseur pour réapprovisionner.
+            </p>
+            {stock.is_active ? (
+              <Button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={isAddingToCart}
+                className={cn("min-w-48 self-start", isAddingToCart && "opacity-80")}
+              >
+                {isAddingToCart ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                    Panier…
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className="material-symbols-outlined text-sm"
+                      aria-hidden
+                    >
+                      shopping_cart
+                    </span>
+                    Commander via le panier
+                  </>
+                )}
+              </Button>
+            ) : null}
+          </div>
         ) : maxTransfer <= 0 ? (
           <p
             className="border border-outline-variant bg-surface px-4 py-3 font-body text-sm text-on-surface-variant"
@@ -272,44 +429,24 @@ export default function StockDetail({
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="transfer-qty"
-                  className="font-label text-[10px] tracking-widest text-outline uppercase"
-                >
-                  Quantité (max {maxTransfer})
-                </label>
-                <input
-                  id="transfer-qty"
-                  type="number"
-                  min={1}
-                  max={maxTransfer}
-                  step={1}
-                  value={qty}
-                  onChange={(e) => setQty(e.target.value)}
-                  disabled={isTransferring}
-                  className="border border-outline-variant bg-surface px-3 py-2 font-body text-sm text-on-surface outline-none focus:border-primary"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="transfer-sale-price"
-                  className="font-label text-[10px] tracking-widest text-outline uppercase"
-                >
-                  Prix de vente (optionnel)
-                </label>
-                <input
-                  id="transfer-sale-price"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder={String(stock.sale_price)}
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value)}
-                  disabled={isTransferring}
-                  className="border border-outline-variant bg-surface px-3 py-2 font-body text-sm text-on-surface outline-none focus:border-primary"
-                />
-              </div>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="transfer-qty"
+                className="font-label text-[10px] tracking-widest text-outline uppercase"
+              >
+                Quantité (max {maxTransfer})
+              </label>
+              <input
+                id="transfer-qty"
+                type="number"
+                min={1}
+                max={maxTransfer}
+                step={1}
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                disabled={isTransferring}
+                className="border border-outline-variant bg-surface px-3 py-2 font-body text-sm text-on-surface outline-none focus:border-primary"
+              />
             </div>
 
             <Button
@@ -358,6 +495,16 @@ export default function StockDetail({
           </p>
         ) : null}
       </form>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <OrnamentalFrame className="w-full bg-surface-container-low p-6">
+      {content}
     </OrnamentalFrame>
   );
 }

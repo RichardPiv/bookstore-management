@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 
 import HeaderTreasuryBalance from "@/components/dashboard/HeaderTreasuryBalance";
@@ -12,6 +16,26 @@ const ARCHIVIST_AVATAR_URL =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAgwnvayWc_-ja1Tf3zBg59Bt9kT5Y4pSfpd2CSAsUyJ7yG7NFwacqCCH3nuHDNBjddlHub9d083G655xEJ3QkdVqzdwnkttOfiDba-KkKirW1TbpKYUoZ-R_u81MJ9i9bRzJeVRq1lxNlerdVYDVRdyJ-0FZY-eJs7lwt50_5bPhUxrnaDgIP1gu1M65kuxOQJE4oU1Fm67Iy1Enxk9WfjqlVQQuiBw-OI3xv91bcSH2w1IcwQWfIIFmlliRNbcgv68H3Ypjw18wU0";
 
 export default function DashboardHeader() {
+  const [username, setUsername] = useState<string>("…");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/auth/me");
+        const body = await res.json();
+        if (!cancelled && res.ok && body.data?.username) {
+          setUsername(body.data.username);
+        }
+      } catch {
+        if (!cancelled) setUsername("Archiviste");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <header className="z-40 flex h-16 w-full shrink-0 items-center justify-between border-b border-burnished-gold/20 bg-surface-container/50 px-6 backdrop-blur-sm md:px-12">
       <div className="flex items-center gap-4">
@@ -50,7 +74,7 @@ export default function DashboardHeader() {
               Archiviste
             </p>
             <p className="font-headline-lg text-sm leading-none tracking-widest text-primary">
-              M. Valerius
+              {username}
             </p>
           </div>
           <div className="dashboard-avatar reliquary-border size-10 shrink-0 overflow-hidden">

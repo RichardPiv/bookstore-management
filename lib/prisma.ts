@@ -1,8 +1,12 @@
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "@/lib/generated/prisma/client";
 
+/** Bump when Prisma models change so HMR does not keep a stale client. */
+const PRISMA_SCHEMA_REVISION = "book_inventory.sale_price";
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaSchemaRevision: string | undefined;
 };
 
 function createPrismaClient() {
@@ -23,7 +27,10 @@ function createPrismaClient() {
 /** True if the cached client exposes the current schema models. */
 function isClientUpToDate(client: PrismaClient): boolean {
   // After `prisma generate`, HMR can keep a stale PrismaClient on globalThis.
-  return typeof (client as { sessions?: unknown }).sessions !== "undefined";
+  if (typeof (client as { sessions?: unknown }).sessions === "undefined") {
+    return false;
+  }
+  return globalForPrisma.prismaSchemaRevision === PRISMA_SCHEMA_REVISION;
 }
 
 function getPrismaClient(): PrismaClient {
@@ -37,6 +44,7 @@ function getPrismaClient(): PrismaClient {
 
   if (process.env.NODE_ENV !== "production") {
     globalForPrisma.prisma = client;
+    globalForPrisma.prismaSchemaRevision = PRISMA_SCHEMA_REVISION;
   }
 
   return client;

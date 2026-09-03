@@ -2,6 +2,8 @@ import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { jsonData, jsonError } from "@/lib/api/responses";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requireAdmin, requireAuth } from "@/lib/auth";
+import { isPlayerRole } from "@/lib/roles";
 import {
   deleteBook,
   getBookById,
@@ -15,6 +17,7 @@ type RouteContext = {
 /** GET /api/books/:id — get a book by id */
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const session = await requireAuth();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -22,7 +25,10 @@ export async function GET(_request: Request, context: RouteContext) {
       return jsonError("INVALID_ID", "Invalid identifier.", 400);
     }
 
-    const book = await getBookById(id);
+    const book = await getBookById(
+      id,
+      isPlayerRole(session.role) ? session.id : undefined,
+    );
 
     if (!book) {
       return jsonError("NOT_FOUND", "Book not found.", 404);
@@ -37,6 +43,7 @@ export async function GET(_request: Request, context: RouteContext) {
 /** PATCH /api/books/:id — update a book */
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -56,6 +63,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 /** DELETE /api/books/:id — delete a book */
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 

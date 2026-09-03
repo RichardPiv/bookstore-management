@@ -13,6 +13,7 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/treasury", label: "Trésorerie", match: "prefix" },
   { href: "/alerts", label: "Alertes", variant: "alert", match: "prefix" },
   { href: "/simulation", label: "Simulation", match: "prefix" },
+  { href: "/profile", label: "Profil", match: "prefix" },
 ];
 
 export function isNavActive(

@@ -20,7 +20,7 @@ export type BookRefPublic = {
   id: number;
   title: string;
   purchase_price: Prisma.Decimal | number | string;
-  sale_price: Prisma.Decimal | number | string;
+  sale_price: Prisma.Decimal | number | string | null;
   is_active: boolean;
   qty_reserve: number | null;
   qty_shelf: number | null;
@@ -31,6 +31,11 @@ export type BookRefPublic = {
 export type TransferToShelfInput = {
   book_id: number;
   qty: number;
-  /** Optional override; defaults to purchase_price when omitted (D58). */
+  /** Optional override of the player's sale price. */
   sale_price?: Prisma.Decimal;
+};
+
+export type UpdateSalePriceInput = {
+  book_id: number;
+  sale_price: Prisma.Decimal;
 };

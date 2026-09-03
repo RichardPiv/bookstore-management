@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import ReliquaryFrame from "@/components/dashboard/ReliquaryFrame";
+import { getSessionUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { getDashboardOverview } from "@/services/dashboard/dashboard-service";
 import type {
@@ -466,7 +468,11 @@ function KpiCards({ overview }: { overview: DashboardOverview }) {
 }
 
 export default async function DashboardPage() {
-  const overview = await getDashboardOverview();
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+  const overview = await getDashboardOverview(session.id);
 
   return (
     <div className="flex-1 space-y-12 overflow-y-auto p-12">

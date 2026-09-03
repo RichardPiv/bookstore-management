@@ -2,6 +2,7 @@ import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { jsonData, jsonError } from "@/lib/api/responses";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import {
   deleteFormat,
   getFormatById,
@@ -14,6 +15,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    await requireAuth();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -34,6 +36,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -51,6 +54,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 

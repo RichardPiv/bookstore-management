@@ -334,7 +334,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
     ean,
     isbn,
     purchase_price,
-    sale_price,
     rarity,
     cover_url,
     category_id,
@@ -391,11 +390,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
 
   const purchasePriceDecimal = parsePrice(purchase_price, "purchase_price");
 
-  let salePriceDecimal = purchasePriceDecimal;
-  if (sale_price !== undefined && sale_price !== null && sale_price !== "") {
-    salePriceDecimal = parsePrice(sale_price, "sale_price");
-  }
-
   return {
     title: trimmedTitle,
     summary: trimmedSummary,
@@ -404,7 +398,6 @@ export function validateCreateBookInput(body: unknown): CreateBookInput {
     ean: trimmedEan,
     isbn: trimmedIsbn,
     purchase_price: purchasePriceDecimal,
-    sale_price: salePriceDecimal,
     rarity,
     cover_url: parsedCoverUrl,
     category_id,
@@ -434,7 +427,6 @@ export function validateUpdateBookInput(body: unknown): UpdateBookInput {
     ean,
     isbn,
     purchase_price,
-    sale_price,
     rarity,
     cover_url,
     category_id,
@@ -512,11 +504,6 @@ export function validateUpdateBookInput(body: unknown): UpdateBookInput {
   if (purchase_price !== undefined) {
     const purchasePriceDecimal = parsePrice(purchase_price, "purchase_price");
     update.purchase_price = purchasePriceDecimal;
-  }
-
-  if (sale_price !== undefined) {
-    const salePriceDecimal = parsePrice(sale_price, "sale_price");
-    update.sale_price = salePriceDecimal;
   }
 
   if (rarity !== undefined) {

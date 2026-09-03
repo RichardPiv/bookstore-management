@@ -2,6 +2,7 @@ import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { handleRouteError } from "@/lib/api/route-errors";
 import { jsonData, jsonError } from "@/lib/api/responses";
+import { requireAdmin } from "@/lib/auth";
 import {
   deleteUser,
   getUserById,
@@ -12,9 +13,10 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-/** GET /api/users/:id — détail d'un administrateur */
+/** GET /api/users/:id — détail d'un utilisateur */
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -37,6 +39,7 @@ export async function GET(_request: Request, context: RouteContext) {
 /** PATCH /api/users/:id — mise à jour partielle */
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -56,6 +59,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 /** DELETE /api/users/:id — suppression */
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    await requireAdmin();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 

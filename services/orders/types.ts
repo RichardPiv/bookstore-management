@@ -43,10 +43,12 @@ export type CreateOrderLineInput = {
 };
 
 export type CreateOrderInput = {
-  user_id: number;
+  /** Optional; ignored by the service (session userId is authoritative). */
+  user_id?: number;
   lines: CreateOrderLineInput[];
 };
 
 export type ListOrdersOptions = {
+  user_id: number;
   order_status_id?: number;
 };

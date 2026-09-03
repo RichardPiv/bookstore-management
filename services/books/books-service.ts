@@ -16,8 +16,7 @@ import {
 } from "@/services/formats/types";
 import {
   fetchInventoriesByBookIds,
-  getInventoryByBookId,
-  updateInventoryAlertThreshold,
+  getGlobalStockSnapshotForBook,
 } from "@/services/inventory/inventory-service";
 import type { BookInventoryView } from "@/services/inventory/types";
 
@@ -149,14 +148,7 @@ async function getStockSnapshotForBook(
   bookId: number,
   tx: TransactionClient = prisma,
 ): Promise<BookStockSnapshot> {
-  const inventory = await getInventoryByBookId(bookId, tx);
-  if (!inventory) {
-    return { qty_reserve: 0, qty_shelf: 0 };
-  }
-  return {
-    qty_reserve: inventory.qty_reserve,
-    qty_shelf: inventory.qty_shelf,
-  };
+  return getGlobalStockSnapshotForBook(bookId, tx);
 }
 
 async function assertCategoryExists(
@@ -223,7 +215,6 @@ function toBookUpdateData(input: UpdateBookInput): Prisma.booksUpdateInput {
   if (input.purchase_price !== undefined) {
     data.purchase_price = input.purchase_price;
   }
-  if (input.sale_price !== undefined) data.sale_price = input.sale_price;
   if (input.rarity !== undefined) data.rarity = input.rarity;
   if (input.cover_url !== undefined) data.cover_url = input.cover_url;
   if (input.category_id !== undefined) data.category_id = input.category_id;
@@ -358,6 +349,7 @@ function withRelationsMany(
 /** Enrich the books with their authors, category, format and inventory. */
 async function enrichBooks(
   books: BookPublic[],
+  userId?: number,
   tx: TransactionClient = prisma,
 ): Promise<BookWithAuthors[]> {
   const bookIds = books.map((book) => book.id);
@@ -372,7 +364,9 @@ async function enrichBooks(
         books.map((book) => book.format_id),
         tx,
       ),
-      fetchInventoriesByBookIds(bookIds, tx),
+      userId !== undefined
+        ? fetchInventoriesByBookIds(userId, bookIds, tx)
+        : Promise.resolve(new Map<number, BookInventoryView>()),
     ]);
 
   return withRelationsMany(
@@ -387,15 +381,16 @@ async function enrichBooks(
 /** Enrich the book with its authors, category, format and inventory. */
 async function enrichBook(
   book: BookPublic,
+  userId?: number,
   tx: TransactionClient = prisma,
 ): Promise<BookWithAuthors> {
-  const [enriched] = await enrichBooks([book], tx);
+  const [enriched] = await enrichBooks([book], userId, tx);
   return enriched;
 }
 
 /** List books with their authors and category. */
 export async function listBooks(
-  options: ListBooksOptions = {},
+  options: ListBooksOptions & { user_id?: number } = {},
 ): Promise<BookWithAuthors[]> {
   const books = await prisma.books.findMany({
     where:
@@ -404,11 +399,14 @@ export async function listBooks(
     orderBy: { title: "asc" },
   });
 
-  return enrichBooks(books);
+  return enrichBooks(books, options.user_id);
 }
 
 /** Get a book by id with its authors and category. */
-export async function getBookById(id: number): Promise<BookWithAuthors | null> {
+export async function getBookById(
+  id: number,
+  userId?: number,
+): Promise<BookWithAuthors | null> {
   const book = await prisma.books.findUnique({
     where: { id },
     select: bookPublicSelect,
@@ -418,7 +416,7 @@ export async function getBookById(id: number): Promise<BookWithAuthors | null> {
     return null;
   }
 
-  return enrichBook(book);
+  return enrichBook(book, userId);
 }
 
 /** Create a book. */
@@ -442,7 +440,6 @@ export async function createBook(body: unknown): Promise<BookWithAuthors> {
         ean: input.ean,
         isbn: input.isbn,
         purchase_price: input.purchase_price,
-        sale_price: input.sale_price,
         rarity: input.rarity,
         cover_url: input.cover_url,
         category_id: input.category_id,
@@ -463,7 +460,7 @@ export async function createBook(body: unknown): Promise<BookWithAuthors> {
       })),
     });
 
-    return enrichBook(book, tx);
+    return enrichBook(book, undefined, tx);
   });
 }
 
@@ -502,9 +499,7 @@ export async function updateBook(
       await assertBookCanBeDeactivated(id, stock, tx);
     }
 
-    if (input.alert_threshold !== undefined) {
-      await updateInventoryAlertThreshold(id, input.alert_threshold, tx);
-    }
+    // alert_threshold is per-player inventory — ignored on shared catalog updates.
 
     const book = await tx.books.update({
       where: { id },
@@ -528,7 +523,7 @@ export async function updateBook(
       });
     }
 
-    return enrichBook(book, tx);
+    return enrichBook(book, undefined, tx);
   });
 }
 
@@ -560,6 +555,6 @@ export async function deleteBook(id: number): Promise<BookWithAuthors> {
       select: bookPublicSelect,
     });
 
-    return enrichBook(deactivated, tx);
+    return enrichBook(deactivated, undefined, tx);
   });
 }

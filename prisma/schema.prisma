@@ -21,10 +21,12 @@ model alerts {
   id              Int      @id @default(autoincrement())
   description     String   @db.Text
   alert_datetime  DateTime @db.DateTime(0)
+  user_id         Int      @db.UnsignedInt
   book_id         Int      @db.UnsignedInt
   alert_type_id   Int      @db.UnsignedInt
   alert_status_id Int      @db.UnsignedInt
 
+  @@index([user_id], map: "alerts_user_id")
   @@index([alert_status_id], map: "alert_status_id")
   @@index([alert_type_id], map: "alert_type_id")
   @@index([book_id], map: "book_id")
@@ -36,41 +38,51 @@ model authors {
 }
 
 model books {
-  id                  Int       @id @default(autoincrement())
-  lore_code           String    @unique(map: "lore_code") @db.VarChar(32)
-  cote                String    @unique(map: "cote") @db.VarChar(64)
-  title               String
-  summary             String    @db.Text
-  editor              String
-  publication_date    DateTime  @db.Date
-  ean                 String    @unique(map: "ean") @db.VarChar(13)
-  isbn                String    @unique(map: "isbn") @db.VarChar(13)
-  purchase_price      Decimal   @db.Decimal(10, 2)
-  sale_price          Decimal   @db.Decimal(10, 2)
-  rarity              String    @default("common") @db.VarChar(32)
-  cover_url           String?   @db.VarChar(255)
-  category_id         Int       @db.UnsignedInt
-  format_id           Int       @db.UnsignedInt
-  series              String?   @db.VarChar(255)
-  volume              Int?      @db.UnsignedInt
-  collection          String?   @db.VarChar(255)
-  supplier_available  Boolean   @default(true)
-  is_active           Boolean   @default(true)
-  created_at          DateTime  @default(now()) @db.DateTime(0)
-  updated_at          DateTime  @default(now()) @db.DateTime(0)
+  id                 Int      @id @default(autoincrement())
+  lore_code          String   @unique(map: "lore_code") @db.VarChar(32)
+  cote               String   @unique(map: "cote") @db.VarChar(64)
+  title              String
+  summary            String   @db.Text
+  editor             String
+  publication_date   DateTime @db.Date
+  ean                String   @unique(map: "ean") @db.VarChar(13)
+  isbn               String   @unique(map: "isbn") @db.VarChar(13)
+  purchase_price     Decimal  @db.Decimal(10, 2)
+  rarity             String   @default("common") @db.VarChar(32)
+  cover_url          String?  @db.VarChar(255)
+  category_id        Int      @db.UnsignedInt
+  format_id          Int      @db.UnsignedInt
+  series             String?  @db.VarChar(255)
+  volume             Int?     @db.UnsignedInt
+  collection         String?  @db.VarChar(255)
+  supplier_available Boolean  @default(true)
+  is_active          Boolean  @default(true)
+  created_at         DateTime @default(now()) @db.DateTime(0)
+  updated_at         DateTime @default(now()) @db.DateTime(0)
 
   @@index([category_id], map: "category_id")
   @@index([format_id], map: "format_id")
 }
 
-/** Local inventory for a catalog book (D1 / D59). No row = never entered the library. */
+/**
+ * Inventaire local par joueur (D1 / D59).
+ * Une ligne = un livre entré dans la librairie d'un user.
+ */
 model book_inventory {
-  book_id           Int      @id @db.Int
+  id                Int      @id @default(autoincrement())
+  user_id           Int      @db.UnsignedInt
+  book_id           Int      @db.Int
   qty_reserve       Int      @default(0) @db.UnsignedInt
   qty_shelf         Int      @default(0) @db.UnsignedInt
   alert_threshold   Int      @default(2) @db.UnsignedInt
+  /** Prix de vente fixé par le joueur (défaut = purchase_price à l'entrée en librairie). */
+  sale_price        Decimal  @db.Decimal(10, 2)
   first_received_at DateTime @db.DateTime(0)
   updated_at        DateTime @default(now()) @db.DateTime(0)
+
+  @@unique([user_id, book_id], map: "user_book_inventory")
+  @@index([user_id], map: "book_inventory_user_id")
+  @@index([book_id], map: "book_inventory_book_id")
 }
 
 model books_authors {
@@ -126,12 +138,12 @@ model orders {
 }
 
 model orders_lines {
-  id                   Int     @id @default(autoincrement())
-  order_id             Int     @db.UnsignedInt
-  book_id              Int     @db.UnsignedInt
-  supplier_id          Int     @db.UnsignedInt
-  qty                  Int     @db.UnsignedInt
-  unit_purchase_price  Decimal @db.Decimal(10, 2)
+  id                  Int     @id @default(autoincrement())
+  order_id            Int     @db.UnsignedInt
+  book_id             Int     @db.UnsignedInt
+  supplier_id         Int     @db.UnsignedInt
+  qty                 Int     @db.UnsignedInt
+  unit_purchase_price Decimal @db.Decimal(10, 2)
 
   @@index([book_id], map: "book_id")
   @@index([order_id], map: "order_id")
@@ -143,11 +155,13 @@ model suppliers {
   name String @unique(map: "name")
 }
 
+/** role: admin | user */
 model users {
   id       Int    @id @default(autoincrement())
-  username String @db.VarChar(100)
+  username String @unique(map: "username") @db.VarChar(100)
   email    String @unique(map: "email") @db.VarChar(100)
   password String
+  role     String @default("user") @db.VarChar(16)
 }
 
 model sessions {
@@ -163,8 +177,11 @@ model sessions {
 
 model simulation_runs {
   id         Int       @id @default(autoincrement())
+  user_id    Int       @db.UnsignedInt
   started_at DateTime  @default(now()) @db.DateTime(0)
   ended_at   DateTime? @db.DateTime(0)
+
+  @@index([user_id], map: "simulation_runs_user_id")
 }
 
 model simulation_events {
@@ -180,9 +197,10 @@ model simulation_events {
   @@index([book_id], map: "book_id")
 }
 
-/** Solde unique de la librairie (D60). Une ligne au MVP. */
+/** Une caisse par joueur (role=user). */
 model treasury_account {
   id            Int      @id @default(autoincrement())
+  user_id       Int      @unique(map: "treasury_account_user_id") @db.UnsignedInt
   balance       Decimal  @db.Decimal(10, 2)
   low_threshold Decimal  @default(1000.00) @db.Decimal(10, 2)
   updated_at    DateTime @default(now()) @db.DateTime(0)
@@ -193,19 +211,21 @@ model treasury_account {
  * type: supplier_purchase | customer_sale | adjustment_in | adjustment_out
  */
 model treasury_movements {
-  id                   Int      @id @default(autoincrement())
-  type                 String   @db.VarChar(32)
-  amount               Decimal  @db.Decimal(10, 2)
-  balance_after        Decimal  @db.Decimal(10, 2)
-  unit_price           Decimal? @db.Decimal(10, 2)
-  qty                  Int?     @db.UnsignedInt
-  order_id             Int?
-  order_line_id        Int?
-  book_id              Int?
-  simulation_event_id  Int?
-  note                 String?  @db.VarChar(255)
-  created_at           DateTime @default(now()) @db.DateTime(0)
+  id                  Int      @id @default(autoincrement())
+  user_id             Int      @db.UnsignedInt
+  type                String   @db.VarChar(32)
+  amount              Decimal  @db.Decimal(10, 2)
+  balance_after       Decimal  @db.Decimal(10, 2)
+  unit_price          Decimal? @db.Decimal(10, 2)
+  qty                 Int?     @db.UnsignedInt
+  order_id            Int?
+  order_line_id       Int?
+  book_id             Int?
+  simulation_event_id Int?
+  note                String?  @db.VarChar(255)
+  created_at          DateTime @default(now()) @db.DateTime(0)
 
+  @@index([user_id], map: "treasury_movements_user_id")
   @@index([type], map: "idx_treasury_movements_type")
   @@index([created_at], map: "idx_treasury_movements_created_at")
   @@index([order_id], map: "idx_treasury_movements_order_id")

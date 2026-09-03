@@ -275,12 +275,7 @@ export default function BookCard({ id }: { id: string }) {
               <span className="text-error">Désactivé</span>
             )}
           </MetaField>
-          <MetaField label="Prix de vente">
-            <span className="font-headline text-2xl font-bold text-primary">
-              {formatFlorins(book.sale_price)} Florins
-            </span>
-          </MetaField>
-          <MetaField label="Valeur d'Acquisition">
+          <MetaField label="Prix d'achat">
             <span className="flex items-center gap-1.5 font-headline text-2xl font-bold text-primary">
               <span className="material-symbols-outlined text-xl" aria-hidden>
                 monetization_on
@@ -288,6 +283,13 @@ export default function BookCard({ id }: { id: string }) {
               {formatFlorins(book.purchase_price)} Florins
             </span>
           </MetaField>
+          {book.inventory ? (
+            <MetaField label="Prix de vente (ta librairie)">
+              <span className="font-headline text-2xl font-bold text-primary">
+                {formatFlorins(book.inventory.sale_price)} Florins
+              </span>
+            </MetaField>
+          ) : null}
           <MetaField label="Ajouté aux archives">
             {formatDate(book.created_at)}
           </MetaField>
@@ -385,12 +387,6 @@ export default function BookCard({ id }: { id: string }) {
         </div>
 
         <div className="flex flex-wrap gap-4 pt-4">
-          <Link
-            href={`/catalog/${book.id}/edit`}
-            className="glow-gold min-w-[200px] flex-1 border border-primary bg-primary/5 px-6 py-3 text-center font-label text-[10px] tracking-widest text-primary uppercase transition-all duration-200 active:scale-95"
-          >
-            Modifier le Codex
-          </Link>
           <Link
             href="/stocks"
             className="min-w-[200px] flex-1 border border-outline px-6 py-3 text-center font-label text-[10px] tracking-widest text-on-surface uppercase transition-all duration-200 hover:border-primary hover:text-primary active:scale-95"

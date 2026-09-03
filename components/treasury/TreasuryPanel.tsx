@@ -5,12 +5,9 @@ import { useState } from "react";
 import ReliquaryFrame from "@/components/dashboard/ReliquaryFrame";
 import { cn } from "@/lib/utils";
 
-import TreasuryAdjustForm from "./TreasuryAdjustForm";
 import TreasuryMovementsList from "./TreasuryMovementsList";
-import { useTreasuryBalance } from "./TreasuryBalanceProvider";
 import {
   formatFlorins,
-  type TreasuryMovementData,
   type TreasuryOverviewData,
 } from "./treasury-data";
 
@@ -19,18 +16,7 @@ type TreasuryPanelProps = {
 };
 
 export default function TreasuryPanel({ initialOverview }: TreasuryPanelProps) {
-  const { refreshTreasury } = useTreasuryBalance();
-  const [overview, setOverview] = useState(initialOverview);
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  function handleAdjusted(payload: {
-    account: TreasuryOverviewData;
-    movement: TreasuryMovementData;
-  }) {
-    setOverview(payload.account);
-    setRefreshKey((k) => k + 1);
-    void refreshTreasury();
-  }
+  const [overview] = useState(initialOverview);
 
   return (
     <div className="mt-10 space-y-8">
@@ -74,10 +60,8 @@ export default function TreasuryPanel({ initialOverview }: TreasuryPanelProps) {
         </div>
       </ReliquaryFrame>
 
-      <TreasuryAdjustForm onAdjusted={handleAdjusted} />
-
       <ReliquaryFrame parchment className="p-6">
-        <TreasuryMovementsList refreshKey={refreshKey} />
+        <TreasuryMovementsList />
       </ReliquaryFrame>
     </div>
   );

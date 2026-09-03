@@ -2,6 +2,7 @@ import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { jsonData, jsonError } from "@/lib/api/responses";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requirePlayer } from "@/lib/auth";
 import {
   deleteAlert,
   getAlertById,
@@ -12,9 +13,10 @@ type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-/** GET /api/alerts/:id — get an alert */
+/** GET /api/alerts/:id — get an alert owned by the player */
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const session = await requirePlayer();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -22,7 +24,7 @@ export async function GET(_request: Request, context: RouteContext) {
       return jsonError("INVALID_ID", "Invalid identifier.", 400);
     }
 
-    const alert = await getAlertById(id);
+    const alert = await getAlertById(id, session.id);
 
     if (!alert) {
       return jsonError("NOT_FOUND", "Alert not found.", 404);
@@ -34,9 +36,10 @@ export async function GET(_request: Request, context: RouteContext) {
   }
 }
 
-/** PATCH /api/alerts/:id — update an alert */
+/** PATCH /api/alerts/:id — update an alert owned by the player */
 export async function PATCH(request: Request, context: RouteContext) {
   try {
+    const session = await requirePlayer();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -45,16 +48,17 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const body = await parseJsonBody(request);
-    const alert = await updateAlert(id, body);
+    const alert = await updateAlert(id, body, session.id);
     return jsonData(alert);
   } catch (error) {
     return handleRouteError(error);
   }
 }
 
-/** DELETE /api/alerts/:id — delete an alert */
+/** DELETE /api/alerts/:id — delete an alert owned by the player */
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
+    const session = await requirePlayer();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -62,7 +66,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       return jsonError("INVALID_ID", "Invalid identifier.", 400);
     }
 
-    const alert = await deleteAlert(id);
+    const alert = await deleteAlert(id, session.id);
     return jsonData(alert);
   } catch (error) {
     return handleRouteError(error);

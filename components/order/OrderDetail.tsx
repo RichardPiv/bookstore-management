@@ -20,11 +20,13 @@ import {
 type OrderDetailProps = {
   order: Order | null;
   onOrderUpdated?: (order: Order) => void;
+  embedded?: boolean;
 };
 
 export default function OrderDetail({
   order,
   onOrderUpdated,
+  embedded = false,
 }: OrderDetailProps) {
   const [isReceiving, setIsReceiving] = useState(false);
   const [receiveError, setReceiveError] = useState<string | null>(null);
@@ -35,6 +37,7 @@ export default function OrderDetail({
   }, [order?.id]);
 
   if (!order) {
+    if (embedded) return null;
     return (
       <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-10 text-center">
         <span
@@ -91,8 +94,8 @@ export default function OrderDetail({
     }
   }
 
-  return (
-    <OrnamentalFrame className="bg-surface-container-low p-6">
+  const content = (
+    <>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -232,6 +235,16 @@ export default function OrderDetail({
           </p>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <OrnamentalFrame className="bg-surface-container-low p-6">
+      {content}
     </OrnamentalFrame>
   );
 }

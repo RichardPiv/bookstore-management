@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
+
 import DashboardFooter from "@/components/dashboard/DashboardFooter";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import TreasuryBalanceProvider from "@/components/treasury/TreasuryBalanceProvider";
+import { getSessionUser } from "@/lib/auth";
+import { isPlayerRole } from "@/lib/roles";
 import { getTreasuryOverview } from "@/services/treasury/treasury-service";
 
 export default async function DashboardLayout({
@@ -9,7 +13,15 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const treasury = await getTreasuryOverview();
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+  if (!isPlayerRole(session.role)) {
+    redirect("/admin");
+  }
+
+  const treasury = await getTreasuryOverview(session.id);
 
   const initialOverview = {
     id: treasury.id,

@@ -1,9 +1,12 @@
 import { AppError } from "@/lib/api/route-errors";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/lib/generated/prisma/client";
+import {
+  INITIAL_TREASURY_BALANCE,
+  INITIAL_TREASURY_LOW_THRESHOLD,
+} from "@/lib/roles";
 
 import {
-  TREASURY_ACCOUNT_ID,
   isTreasuryDebitType,
   toTreasuryOverview,
   treasuryAccountSelect,
@@ -22,17 +25,18 @@ import {
 type TransactionClient = Prisma.TransactionClient;
 
 async function getAccountOrThrow(
+  userId: number,
   tx: TransactionClient,
 ): Promise<TreasuryAccountPublic> {
   const account = await tx.treasury_account.findUnique({
-    where: { id: TREASURY_ACCOUNT_ID },
+    where: { user_id: userId },
     select: treasuryAccountSelect,
   });
 
   if (!account) {
     throw new AppError(
       "NOT_FOUND",
-      "Treasury account not found. Apply migration 014_treasury.sql.",
+      "Treasury account not found for this user.",
       404,
     );
   }
@@ -40,11 +44,9 @@ async function getAccountOrThrow(
   return account;
 }
 
-/**
- * Ensure the single treasury account exists (idempotent seed helper).
- * Prefer the SQL migration INSERT; this is a safety net for local resets.
- */
+/** Create a treasury account for a player (idempotent). */
 export async function ensureTreasuryAccount(
+  userId: number,
   options: {
     balance?: Prisma.Decimal | number | string;
     low_threshold?: Prisma.Decimal | number | string;
@@ -52,7 +54,7 @@ export async function ensureTreasuryAccount(
   tx: TransactionClient = prisma,
 ): Promise<TreasuryAccountPublic> {
   const existing = await tx.treasury_account.findUnique({
-    where: { id: TREASURY_ACCOUNT_ID },
+    where: { user_id: userId },
     select: treasuryAccountSelect,
   });
 
@@ -62,32 +64,35 @@ export async function ensureTreasuryAccount(
 
   return tx.treasury_account.create({
     data: {
-      id: TREASURY_ACCOUNT_ID,
-      balance: options.balance ?? 10000,
-      low_threshold: options.low_threshold ?? 1000,
+      user_id: userId,
+      balance: options.balance ?? INITIAL_TREASURY_BALANCE,
+      low_threshold: options.low_threshold ?? INITIAL_TREASURY_LOW_THRESHOLD,
       updated_at: new Date(),
     },
     select: treasuryAccountSelect,
   });
 }
 
-/** Read the treasury account. */
+/** Read the treasury account for a player. */
 export async function getAccount(
+  userId: number,
   tx: TransactionClient = prisma,
 ): Promise<TreasuryAccountPublic> {
-  return getAccountOrThrow(tx);
+  return getAccountOrThrow(userId, tx);
 }
 
 /** Read account + `is_low` (D67). */
 export async function getTreasuryOverview(
+  userId: number,
   tx: TransactionClient = prisma,
 ): Promise<TreasuryOverview> {
-  const account = await getAccountOrThrow(tx);
+  const account = await getAccountOrThrow(userId, tx);
   return toTreasuryOverview(account);
 }
 
-/** List movements, newest first. */
+/** List movements for a player, newest first. */
 export async function listMovements(
+  userId: number,
   options: ListTreasuryMovementsOptions | URLSearchParams = {},
 ): Promise<TreasuryMovementPublic[]> {
   const parsed =
@@ -99,7 +104,10 @@ export async function listMovements(
         };
 
   return prisma.treasury_movements.findMany({
-    where: parsed.type ? { type: parsed.type } : undefined,
+    where: {
+      user_id: userId,
+      ...(parsed.type ? { type: parsed.type } : {}),
+    },
     select: treasuryMovementSelect,
     orderBy: [{ created_at: "desc" }, { id: "desc" }],
     take: parsed.limit ?? 50,
@@ -111,6 +119,7 @@ export async function listMovements(
  * Debit types refuse with 409 if balance is insufficient (D63).
  */
 export async function applyMovement(
+  userId: number,
   input: ApplyTreasuryMovementInput,
   tx: TransactionClient = prisma,
 ): Promise<{
@@ -118,7 +127,7 @@ export async function applyMovement(
   movement: TreasuryMovementPublic;
 }> {
   const run = async (client: TransactionClient) => {
-    const account = await getAccountOrThrow(client);
+    const account = await getAccountOrThrow(userId, client);
     const isDebit = isTreasuryDebitType(input.type);
 
     if (isDebit && account.balance.lessThan(input.amount)) {
@@ -144,6 +153,7 @@ export async function applyMovement(
 
     const movement = await client.treasury_movements.create({
       data: {
+        user_id: userId,
         type: input.type,
         amount: input.amount,
         balance_after: balanceAfter,
@@ -170,32 +180,37 @@ export async function applyMovement(
 
 /** Debit helper (supplier purchase / adjustment out). */
 export async function applyDebit(
+  userId: number,
   input: Omit<ApplyTreasuryMovementInput, "type"> & {
     type: "supplier_purchase" | "adjustment_out";
   },
   tx: TransactionClient = prisma,
 ) {
-  return applyMovement(input, tx);
+  return applyMovement(userId, input, tx);
 }
 
 /** Credit helper (customer sale / adjustment in). */
 export async function applyCredit(
+  userId: number,
   input: Omit<ApplyTreasuryMovementInput, "type"> & {
     type: "customer_sale" | "adjustment_in";
   },
   tx: TransactionClient = prisma,
 ) {
-  return applyMovement(input, tx);
+  return applyMovement(userId, input, tx);
 }
 
-/** Manual admin adjustment (D66). */
-export async function adjustTreasury(body: unknown): Promise<{
+/** Manual admin adjustment for a player's treasury (D66). */
+export async function adjustTreasury(
+  userId: number,
+  body: unknown,
+): Promise<{
   account: TreasuryOverview;
   movement: TreasuryMovementPublic;
 }> {
   const input = validateAdjustTreasuryInput(body);
 
-  const result = await applyMovement({
+  const result = await applyMovement(userId, {
     type: input.direction === "in" ? "adjustment_in" : "adjustment_out",
     amount: input.amount,
     note: input.note,
@@ -210,7 +225,6 @@ export async function adjustTreasury(body: unknown): Promise<{
 export type RecordSaleInput = {
   book_id: number;
   qty?: number;
-  /** Snapshot at sale time (D65). If omitted, current books.sale_price is used. */
   unit_price?: Prisma.Decimal | number | string;
   simulation_event_id?: number | null;
   note?: string | null;
@@ -218,9 +232,9 @@ export type RecordSaleInput = {
 
 /**
  * Record a customer sale as a treasury credit (D64–D65).
- * Stock decrement stays the caller's responsibility (simulation / future POS).
  */
 export async function recordSale(
+  userId: number,
   input: RecordSaleInput,
   tx: TransactionClient = prisma,
 ): Promise<{
@@ -242,14 +256,20 @@ export async function recordSale(
   if (input.unit_price !== undefined && input.unit_price !== null) {
     unitPrice = new Prisma.Decimal(input.unit_price);
   } else {
-    const book = await tx.books.findUnique({
-      where: { id: input.book_id },
-      select: { id: true, sale_price: true },
+    const inventory = await tx.book_inventory.findUnique({
+      where: {
+        user_id_book_id: { user_id: userId, book_id: input.book_id },
+      },
+      select: { sale_price: true },
     });
-    if (!book) {
-      throw new AppError("NOT_FOUND", "Book not found.", 404);
+    if (!inventory) {
+      throw new AppError(
+        "NOT_FOUND",
+        "Book is not in library inventory.",
+        404,
+      );
     }
-    unitPrice = book.sale_price;
+    unitPrice = inventory.sale_price;
   }
 
   if (unitPrice.lessThanOrEqualTo(0)) {
@@ -261,6 +281,7 @@ export async function recordSale(
   }
 
   const result = await applyCredit(
+    userId,
     {
       type: "customer_sale",
       amount: unitPrice.mul(qty),

@@ -92,7 +92,14 @@ function FormToggle({
   );
 }
 
-export default function BookForm({ id = "" }: { id?: string }) {
+export default function BookForm({
+  id = "",
+  booksBasePath = "/catalog",
+}: {
+  id?: string;
+  /** Base path after save / cancel (e.g. /admin/books). */
+  booksBasePath?: string;
+}) {
   const router = useRouter();
   const isEditMode = id.trim() !== "";
   const coverFileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +110,6 @@ export default function BookForm({ id = "" }: { id?: string }) {
   const [ean, setEan] = useState("");
   const [isbn, setIsbn] = useState("");
   const [purchase_price, setPurchasePrice] = useState("");
-  const [sale_price, setSellingPrice] = useState("");
   const [rarity, setRarity] = useState<BookRarity>("common");
   const [cover_url, setCoverUrl] = useState("");
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
@@ -191,7 +197,6 @@ export default function BookForm({ id = "" }: { id?: string }) {
       setEan(book.ean);
       setIsbn(book.isbn);
       setPurchasePrice(formatDecimalInput(book.purchase_price));
-      setSellingPrice(formatDecimalInput(book.sale_price));
       setRarity(
         BOOK_RARITIES.includes(book.rarity as BookRarity)
           ? (book.rarity as BookRarity)
@@ -307,7 +312,6 @@ export default function BookForm({ id = "" }: { id?: string }) {
       ean,
       isbn,
       purchase_price,
-      sale_price,
       rarity,
       cover_url,
       category_id,
@@ -383,7 +387,11 @@ export default function BookForm({ id = "" }: { id?: string }) {
         return;
       }
 
-      router.push(`/catalog/${bookId}`);
+      router.push(
+        booksBasePath.startsWith("/admin")
+          ? `${booksBasePath}/${bookId}/edit`
+          : `${booksBasePath}/${bookId}`,
+      );
       router.refresh();
     } catch {
       setStatus("error");
@@ -516,51 +524,31 @@ export default function BookForm({ id = "" }: { id?: string }) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label htmlFor="purchase_price" className={labelClass}>
-                  Prix d&apos;achat*
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    id="purchase_price"
-                    value={purchase_price}
-                    onChange={(e) =>
-                      setPurchasePrice(filterPriceInput(e.target.value))
-                    }
-                    placeholder="0.00"
-                    disabled={isFormDisabled}
-                    className={`${inputClass} pr-10 font-label-sm`}
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 font-label-sm text-sm text-outline">
-                    €
-                  </span>
-                </div>
+            <div>
+              <label htmlFor="purchase_price" className={labelClass}>
+                Prix d&apos;achat (florins)*
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  id="purchase_price"
+                  value={purchase_price}
+                  onChange={(e) =>
+                    setPurchasePrice(filterPriceInput(e.target.value))
+                  }
+                  placeholder="0.00"
+                  disabled={isFormDisabled}
+                  className={`${inputClass} pr-10 font-label-sm`}
+                />
+                <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 font-label-sm text-sm text-outline">
+                  F
+                </span>
               </div>
-              <div>
-                <label htmlFor="sale_price" className={labelClass}>
-                  Prix de vente*
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    id="sale_price"
-                    value={sale_price}
-                    onChange={(e) =>
-                      setSellingPrice(filterPriceInput(e.target.value))
-                    }
-                    placeholder="0.00"
-                    disabled={isFormDisabled}
-                    className={`${inputClass} pr-10 font-label-sm`}
-                  />
-                  <span className="pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 font-label-sm text-sm text-outline">
-                    €
-                  </span>
-                </div>
-              </div>
+              <p className="mt-2 font-body text-xs text-on-surface-variant">
+                Prix fournisseur du catalogue. Le prix de vente est fixé par
+                chaque joueur dans ses stocks.
+              </p>
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

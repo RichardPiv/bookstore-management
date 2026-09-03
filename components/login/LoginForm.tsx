@@ -35,7 +35,8 @@ export default function LoginForm() {
         return;
       }
 
-      router.push("/dashboard");
+      const role = body.data?.user?.role;
+      router.push(role === "admin" ? "/admin" : "/dashboard");
       router.refresh();
     } catch {
       setStatus("error");

@@ -1,6 +1,7 @@
 import { jsonData } from "@/lib/api/responses";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import {
   createSupplier,
   listSuppliers,
@@ -9,6 +10,7 @@ import {
 /** GET /api/suppliers — list all suppliers */
 export async function GET() {
   try {
+    await requireAuth();
     const suppliers = await listSuppliers();
     return jsonData(suppliers);
   } catch (error) {
@@ -19,6 +21,7 @@ export async function GET() {
 /** POST /api/suppliers — create a supplier */
 export async function POST(request: Request) {
   try {
+    await requireAdmin();
     const body = await parseJsonBody(request);
     const supplier = await createSupplier(body);
     return jsonData(supplier, 201);

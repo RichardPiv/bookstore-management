@@ -19,7 +19,6 @@ export const bookPublicSelect = {
   ean: true,
   isbn: true,
   purchase_price: true,
-  sale_price: true,
   rarity: true,
   cover_url: true,
   category_id: true,
@@ -63,7 +62,6 @@ export type CreateBookInput = {
   ean: string;
   isbn: string;
   purchase_price: Prisma.Decimal;
-  sale_price: Prisma.Decimal;
   rarity: string;
   cover_url: string | null;
   category_id: number;
@@ -89,7 +87,6 @@ export type UpdateBookInput = {
   ean?: string;
   isbn?: string;
   purchase_price?: Prisma.Decimal;
-  sale_price?: Prisma.Decimal;
   rarity?: string;
   cover_url?: string | null;
   category_id?: number;

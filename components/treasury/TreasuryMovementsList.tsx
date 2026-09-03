@@ -16,10 +16,13 @@ import {
 
 type TreasuryMovementsListProps = {
   refreshKey?: number;
+  /** Optional player id for admin view. */
+  userId?: number;
 };
 
 export default function TreasuryMovementsList({
   refreshKey = 0,
+  userId,
 }: TreasuryMovementsListProps) {
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -33,6 +36,9 @@ export default function TreasuryMovementsList({
     const params = new URLSearchParams({ limit: "50" });
     if (typeFilter) {
       params.set("type", typeFilter);
+    }
+    if (userId !== undefined) {
+      params.set("user_id", String(userId));
     }
 
     try {
@@ -53,7 +59,7 @@ export default function TreasuryMovementsList({
       setErrorMessage("Impossible de charger les mouvements. Réessayez.");
       setStatus("error");
     }
-  }, [typeFilter]);
+  }, [typeFilter, userId]);
 
   useEffect(() => {
     void loadMovements();

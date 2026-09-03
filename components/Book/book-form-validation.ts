@@ -16,7 +16,6 @@ export type BookFormFields = {
   ean: string;
   isbn: string;
   purchase_price: string;
-  sale_price: string;
   rarity: string;
   cover_url: string;
   category_id: number;
@@ -50,7 +49,6 @@ export function validateBookFormFields(
   const ean = normalizeDigits(fields.ean);
   const isbn = normalizeDigits(fields.isbn);
   const purchasePrice = fields.purchase_price.trim();
-  const salePrice = fields.sale_price.trim();
   const coverUrl = fields.cover_url.trim();
   const series = fields.series.trim();
   const volume = fields.volume.trim();
@@ -104,10 +102,6 @@ export function validateBookFormFields(
   }
   if (!PRICE_REGEX.test(purchasePrice) || Number(purchasePrice) <= 0) {
     return "Le prix d'achat doit être un montant positif valide.";
-  }
-
-  if (salePrice && (!PRICE_REGEX.test(salePrice) || Number(salePrice) <= 0)) {
-    return "Le prix de vente doit être un montant positif valide.";
   }
 
   if (!isBookRarity(fields.rarity)) {
@@ -177,7 +171,6 @@ export function buildBookFormPayload(
     ean: normalizeDigits(fields.ean),
     isbn: normalizeDigits(fields.isbn),
     purchase_price: fields.purchase_price.trim(),
-    sale_price: fields.sale_price.trim() || undefined,
     rarity: fields.rarity,
     cover_url: fields.cover_url.trim() || null,
     category_id: fields.category_id,

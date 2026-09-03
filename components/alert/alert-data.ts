@@ -16,7 +16,7 @@ export type AlertBook = {
   id: number;
   title: string;
   purchase_price: number | string;
-  sale_price: number | string;
+  sale_price: number | string | null;
   is_active: boolean;
   qty_reserve: number | null;
   qty_shelf: number | null;

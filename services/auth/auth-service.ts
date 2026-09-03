@@ -1,6 +1,7 @@
 import { AppError } from "@/lib/api/route-errors";
 import { verifyPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import { isUserRole, type UserRole } from "@/lib/roles";
 import {
   createSessionToken,
   SESSION_DURATION_MS,
@@ -35,6 +36,8 @@ export async function login(body: unknown): Promise<LoginResult> {
     );
   }
 
+  const role: UserRole = isUserRole(user.role) ? user.role : "user";
+
   const token = createSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
 
@@ -51,6 +54,7 @@ export async function login(body: unknown): Promise<LoginResult> {
       id: user.id,
       username: user.username,
       email: user.email,
+      role,
     },
     token,
     expires_at: expiresAt,
@@ -60,7 +64,12 @@ export async function login(body: unknown): Promise<LoginResult> {
 /** Resolve a valid session token to the public user, or null. */
 export async function getUserBySessionToken(
   token: string,
-): Promise<{ id: number; username: string; email: string } | null> {
+): Promise<{
+  id: number;
+  username: string;
+  email: string;
+  role: UserRole;
+} | null> {
   const session = await prisma.sessions.findUnique({
     where: { token },
     select: {
@@ -78,8 +87,24 @@ export async function getUserBySessionToken(
     return null;
   }
 
-  return prisma.users.findUnique({
+  const user = await prisma.users.findUnique({
     where: { id: session.user_id },
     select: userPublicSelect,
   });
+
+  if (!user || !isUserRole(user.role)) {
+    return null;
+  }
+
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+  };
+}
+
+/** Invalidate a session token. */
+export async function logout(token: string): Promise<void> {
+  await prisma.sessions.delete({ where: { token } }).catch(() => undefined);
 }

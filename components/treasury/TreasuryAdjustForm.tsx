@@ -12,13 +12,18 @@ import {
 } from "./treasury-data";
 
 type TreasuryAdjustFormProps = {
+  /** Target player id (required for admin adjust). */
+  userId: number;
   onAdjusted: (payload: {
     account: TreasuryOverviewData;
     movement: TreasuryMovementData;
   }) => void;
 };
 
-export default function TreasuryAdjustForm({ onAdjusted }: TreasuryAdjustFormProps) {
+export default function TreasuryAdjustForm({
+  userId,
+  onAdjusted,
+}: TreasuryAdjustFormProps) {
   const [direction, setDirection] = useState<"in" | "out">("in");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
@@ -49,6 +54,7 @@ export default function TreasuryAdjustForm({ onAdjusted }: TreasuryAdjustFormPro
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: userId,
           direction,
           amount: parsedAmount,
           note: trimmedNote,

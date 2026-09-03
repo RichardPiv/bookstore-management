@@ -47,37 +47,49 @@ async function logSimulationEvent(
   });
 }
 
-/** List simulation events. */
+/** List simulation events for a player's runs. */
 export async function listSimulationEvents(
+  userId: number,
   options: ListSimulationEventsOptions = {},
 ): Promise<SimulationEventPublic[]> {
+  const runFilter =
+    options.simulation_run_id !== undefined
+      ? { id: options.simulation_run_id, user_id: userId }
+      : { user_id: userId };
+
+  const runs = await prisma.simulation_runs.findMany({
+    where: runFilter,
+    select: { id: true },
+  });
+
+  if (runs.length === 0) {
+    return [];
+  }
+
   return prisma.simulation_events.findMany({
-    where:
-      options.simulation_run_id !== undefined
-        ? { simulation_run_id: options.simulation_run_id }
-        : undefined,
+    where: { simulation_run_id: { in: runs.map((run) => run.id) } },
     select: simulationEventSelect,
     orderBy: { created_at: "desc" },
   });
 }
 
-/** Run a batch simulation (customer purchases). */
+/** Run a batch simulation for one player. */
 export async function runSimulation(
+  userId: number,
   body: unknown = null,
 ): Promise<SimulationRunResult> {
   const input = validateRunSimulationInput(body);
 
   return prisma.$transaction(async (tx) => {
     const run = await tx.simulation_runs.create({
-      data: { started_at: new Date() },
+      data: { user_id: userId, started_at: new Date() },
       select: simulationRunSelect,
     });
 
     const events: SimulationEventPublic[] = [];
 
-    // Only books already in library inventory with shelf stock can be sold.
     const shelfInventories = await tx.book_inventory.findMany({
-      where: { qty_shelf: { gt: 0 } },
+      where: { user_id: userId, qty_shelf: { gt: 0 } },
       select: inventoryPublicSelect,
     });
 
@@ -90,7 +102,6 @@ export async function runSimulation(
         id: true,
         title: true,
         purchase_price: true,
-        sale_price: true,
         is_active: true,
       },
     });
@@ -108,7 +119,7 @@ export async function runSimulation(
         book_id: book.id,
         title: book.title,
         purchase_price: book.purchase_price,
-        sale_price: book.sale_price,
+        sale_price: inventory.sale_price,
         is_active: book.is_active,
         qty_reserve: inventory.qty_reserve,
         qty_shelf: inventory.qty_shelf,
@@ -137,7 +148,7 @@ export async function runSimulation(
         }
 
         try {
-          const updated = await decrementShelfStock(book.id, 1, tx);
+          const updated = await decrementShelfStock(userId, book.id, 1, tx);
           const unitSalePrice = new Prisma.Decimal(updated.sale_price);
 
           const bookIndex = purchasableBooks.findIndex(
@@ -166,6 +177,7 @@ export async function runSimulation(
           );
 
           await recordSale(
+            userId,
             {
               book_id: updated.id,
               qty: 1,

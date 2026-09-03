@@ -1,6 +1,7 @@
 import { jsonData } from "@/lib/api/responses";
 import { parseJsonBody } from "@/lib/api/parse-json-body";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requireAdmin, requireAuth } from "@/lib/auth";
 import {
   createOrderStatus,
   listOrderStatuses,
@@ -9,6 +10,7 @@ import {
 /** GET /api/order-statuses — list all order statuses */
 export async function GET() {
   try {
+    await requireAuth();
     const orderStatuses = await listOrderStatuses();
     return jsonData(orderStatuses);
   } catch (error) {
@@ -19,6 +21,7 @@ export async function GET() {
 /** POST /api/order-statuses — create an order status */
 export async function POST(request: Request) {
   try {
+    await requireAdmin();
     const body = await parseJsonBody(request);
     const orderStatus = await createOrderStatus(body);
     return jsonData(orderStatus, 201);

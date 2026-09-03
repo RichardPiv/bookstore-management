@@ -597,6 +597,12 @@
     gap: 24px;
   }
 
+  .entity-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
   .rpg-input {
     background: #19120b;
     border: 1px solid #4b463c;
@@ -821,16 +827,30 @@
     .inventory-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .entity-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 
   @media (max-width: 768px) {
     .inventory-grid {
       grid-template-columns: minmax(0, 1fr);
     }
+
+    .entity-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .custom-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--inverse-primary) var(--surface-container-lowest);
   }
 
   .custom-scroll::-webkit-scrollbar {
     width: 6px;
+    height: 6px;
   }
 
   .custom-scroll::-webkit-scrollbar-track {

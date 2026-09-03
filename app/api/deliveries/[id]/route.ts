@@ -1,6 +1,7 @@
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { jsonData, jsonError } from "@/lib/api/responses";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requireAuth } from "@/lib/auth";
 import { getDeliveryById } from "@/services/deliveries/deliveries-service";
 
 type RouteContext = {
@@ -10,6 +11,7 @@ type RouteContext = {
 /** GET /api/deliveries/:id — get a delivery */
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    await requireAuth();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 

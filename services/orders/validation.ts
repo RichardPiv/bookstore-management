@@ -65,10 +65,13 @@ export function validateCreateOrderInput(body: unknown): CreateOrderInput {
 
   const { user_id, lines } = body as Record<string, unknown>;
 
-  assertPositiveInt(user_id, "user_id");
+  // user_id is optional (compat); the route uses the session user.
+  if (user_id !== undefined) {
+    assertPositiveInt(user_id, "user_id");
+  }
 
   return {
-    user_id,
+    ...(user_id !== undefined ? { user_id } : {}),
     lines: assertOrderLines(lines),
   };
 }

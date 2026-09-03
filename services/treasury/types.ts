@@ -20,14 +20,12 @@ export const TREASURY_CREDIT_TYPES = [
   "adjustment_in",
 ] as const satisfies readonly TreasuryMovementType[];
 
-/** Single-caisse account id created by migration 014. */
-export const TREASURY_ACCOUNT_ID = 1;
-
 /**
  * Select fields for public treasury accounts.
  */
 export const treasuryAccountSelect = {
   id: true,
+  user_id: true,
   balance: true,
   low_threshold: true,
   updated_at: true,
@@ -52,6 +50,7 @@ export type TreasuryOverview = TreasuryAccountPublic & {
  */
 export const treasuryMovementSelect = {
   id: true,
+  user_id: true,
   type: true,
   amount: true,
   balance_after: true,

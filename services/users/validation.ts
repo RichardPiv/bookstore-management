@@ -1,4 +1,5 @@
 import { AppError } from "@/lib/api/route-errors";
+import { isUserRole } from "@/lib/roles";
 
 import type { CreateUserInput, UpdateUserInput } from "./types";
 
@@ -35,7 +36,7 @@ export function validateCreateUserInput(body: unknown): CreateUserInput {
     throw new AppError("VALIDATION_ERROR", "Invalid request body.", 400);
   }
 
-  const { username, email, password } = body as Record<string, unknown>;
+  const { username, email, password, role } = body as Record<string, unknown>;
 
   assertNonEmptyString(username, "username");
   assertNonEmptyString(email, "email");
@@ -59,10 +60,23 @@ export function validateCreateUserInput(body: unknown): CreateUserInput {
     );
   }
 
+  let parsedRole: CreateUserInput["role"];
+  if (role !== undefined) {
+    if (!isUserRole(role)) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        'The field "role" must be "admin" or "user".',
+        400,
+      );
+    }
+    parsedRole = role;
+  }
+
   return {
     username: trimmedUsername,
     email: trimmedEmail,
     password,
+    role: parsedRole,
   };
 }
 
@@ -72,7 +86,7 @@ export function validateUpdateUserInput(body: unknown): UpdateUserInput {
     throw new AppError("VALIDATION_ERROR", "Invalid request body.", 400);
   }
 
-  const { username, email, password } = body as Record<string, unknown>;
+  const { username, email, password, role } = body as Record<string, unknown>;
   const update: UpdateUserInput = {};
 
   if (username !== undefined) {
@@ -106,6 +120,17 @@ export function validateUpdateUserInput(body: unknown): UpdateUserInput {
     }
 
     update.password = password;
+  }
+
+  if (role !== undefined) {
+    if (!isUserRole(role)) {
+      throw new AppError(
+        "VALIDATION_ERROR",
+        'The field "role" must be "admin" or "user".',
+        400,
+      );
+    }
+    update.role = role;
   }
 
   if (Object.keys(update).length === 0) {

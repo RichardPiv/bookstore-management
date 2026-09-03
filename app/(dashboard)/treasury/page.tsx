@@ -1,8 +1,14 @@
 import TreasuryPanel from "@/components/treasury/TreasuryPanel";
+import { getSessionUser } from "@/lib/auth";
 import { getTreasuryOverview } from "@/services/treasury/treasury-service";
+import { redirect } from "next/navigation";
 
 export default async function TreasuryPage() {
-  const overview = await getTreasuryOverview();
+  const session = await getSessionUser();
+  if (!session) {
+    redirect("/login");
+  }
+  const overview = await getTreasuryOverview(session.id);
 
   const initialOverview = {
     id: overview.id,

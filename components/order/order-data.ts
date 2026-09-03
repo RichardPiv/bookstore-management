@@ -7,7 +7,7 @@ export type OrderBook = {
   id: number;
   title: string;
   purchase_price: number | string;
-  sale_price: number | string;
+  sale_price: number | string | null;
   qty_reserve: number | null;
   qty_shelf: number | null;
   alert_threshold: number | null;
@@ -121,4 +121,13 @@ export function getOrderTotal(order: Order) {
     );
     return total + unitPrice * line.qty;
   }, 0);
+}
+
+export type OrderFilter = "pending" | "received" | "all";
+
+export function matchesOrderFilter(order: Order, filter: OrderFilter): boolean {
+  const pending = isOrderPending(order.order_status?.name);
+  if (filter === "all") return true;
+  if (filter === "pending") return pending;
+  return !pending;
 }

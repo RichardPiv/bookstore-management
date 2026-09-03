@@ -25,12 +25,14 @@ type AlertDetailProps = {
   alert: Alert | null;
   resolvedStatus: AlertRef | null;
   onAlertUpdated?: (alert: Alert) => void;
+  embedded?: boolean;
 };
 
 export default function AlertDetail({
   alert,
   resolvedStatus,
   onAlertUpdated,
+  embedded = false,
 }: AlertDetailProps) {
   const [isResolving, setIsResolving] = useState(false);
   const [resolveError, setResolveError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export default function AlertDetail({
   }, [alert?.id]);
 
   if (!alert) {
+    if (embedded) return null;
     return (
       <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-10 text-center">
         <span
@@ -106,8 +109,8 @@ export default function AlertDetail({
     }
   }
 
-  return (
-    <OrnamentalFrame className="bg-surface-container-low p-6">
+  const content = (
+    <>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3 border-b border-outline-variant/40 pb-5">
         <div>
           <p className="mb-2 font-label text-[10px] tracking-[0.24em] text-burnished-gold/70 uppercase">
@@ -257,6 +260,16 @@ export default function AlertDetail({
           {resolveSuccess}
         </p>
       ) : null}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <OrnamentalFrame className="bg-surface-container-low p-6">
+      {content}
     </OrnamentalFrame>
   );
 }

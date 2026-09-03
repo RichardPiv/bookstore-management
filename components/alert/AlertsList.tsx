@@ -3,8 +3,9 @@
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import CollectionPagination from "@/components/ui/CollectionPagination";
+import EntityDetailOverlay from "@/components/ui/EntityDetailOverlay";
+import FilterTabs from "@/components/ui/FilterTabs";
 import { RESOLVED_ALERT_STATUS_NAMES } from "@/lib/alert-references";
 
 import AlertCard from "./AlertCard";
@@ -17,9 +18,9 @@ import {
   type LoadStatus,
 } from "./alert-data";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 9;
 
-const FILTERS: { id: AlertFilter; label: string }[] = [
+const ALERT_FILTERS: { id: AlertFilter; label: string }[] = [
   { id: "active", label: "Actives" },
   { id: "resolved", label: "Résolues" },
   { id: "all", label: "Toutes" },
@@ -99,6 +100,16 @@ export default function AlertsList() {
     };
   }, []);
 
+  const filterTabs = useMemo(
+    () =>
+      ALERT_FILTERS.map((item) => ({
+        ...item,
+        count: alerts.filter((alert) => matchesAlertFilter(alert, item.id))
+          .length,
+      })),
+    [alerts],
+  );
+
   const filteredAlerts = useMemo(
     () => alerts.filter((alert) => matchesAlertFilter(alert, filter)),
     [alerts, filter],
@@ -153,114 +164,73 @@ export default function AlertsList() {
 
   return (
     <div className="mt-10 flex flex-col gap-8">
-      <div
-        className="flex flex-wrap gap-2"
-        role="tablist"
-        aria-label="Filtrer les alertes"
-      >
-        {FILTERS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={filter === item.id}
-            onClick={() => setFilter(item.id)}
-            className={cn(
-              "border px-4 py-2 font-label text-[10px] tracking-widest uppercase transition-colors",
-              filter === item.id
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-outline-variant text-on-surface-variant hover:border-primary/40 hover:text-primary",
-            )}
+      <FilterTabs
+        items={filterTabs}
+        value={filter}
+        onChange={setFilter}
+        ariaLabel="Filtrer les alertes"
+      />
+
+      {alerts.length === 0 ? (
+        <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-16 text-center">
+          <span
+            className="material-symbols-outlined mb-4 text-4xl text-outline/50"
+            aria-hidden
           >
-            {item.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-8 lg:flex-row">
-        <div className="flex min-w-0 flex-1 flex-col gap-6">
-          {filteredAlerts.length === 0 ? (
-            <div className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-16 text-center">
-              <span
-                className="material-symbols-outlined mb-4 text-4xl text-outline/50"
-                aria-hidden
-              >
-                notifications_active
-              </span>
-              <p className="font-headline text-lg text-primary uppercase">
-                Aucune alerte
-              </p>
-              <p className="mt-2 font-body text-sm text-on-surface-variant">
-                {filter === "active"
-                  ? "Aucune alerte active pour le moment."
-                  : filter === "resolved"
-                    ? "Aucune alerte résolue dans l'historique."
-                    : "Les alertes de stock apparaîtront ici (simulation, rupture, rayon bas)."}
-              </p>
-            </div>
-          ) : (
-            <>
-              {paginatedAlerts.map((alert) => (
-                <AlertCard
-                  key={alert.id}
-                  alert={alert}
-                  selected={selectedAlert?.id === alert.id}
-                  onSelect={() => setSelectedAlert(alert)}
-                />
-              ))}
-
-              {totalPages > 1 ? (
-                <nav
-                  className="mt-2 flex flex-wrap items-center justify-center gap-4"
-                  aria-label="Pagination des alertes"
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setPage((current) => Math.max(1, current - 1))
-                    }
-                    disabled={page <= 1}
-                    className="min-w-32"
-                  >
-                    <ChevronLeft className="size-3.5" aria-hidden />
-                    Précédent
-                  </Button>
-
-                  <p className="font-label text-[10px] tracking-widest text-on-surface-variant uppercase">
-                    Page <span className="text-primary">{page}</span>
-                    {" / "}
-                    {totalPages}
-                  </p>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() =>
-                      setPage((current) => Math.min(totalPages, current + 1))
-                    }
-                    disabled={page >= totalPages}
-                    className="min-w-32"
-                  >
-                    Suivant
-                    <ChevronRight className="size-3.5" aria-hidden />
-                  </Button>
-                </nav>
-              ) : null}
-            </>
-          )}
+            notifications_active
+          </span>
+          <p className="font-headline text-lg text-primary uppercase">
+            Aucune alerte
+          </p>
+          <p className="mt-2 font-body text-sm text-on-surface-variant">
+            Les alertes de stock apparaîtront ici (simulation, rupture, rayon
+            bas).
+          </p>
         </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="sticky top-6 z-10 w-full">
-            <AlertDetail
-              alert={selectedAlert}
-              resolvedStatus={resolvedStatus}
-              onAlertUpdated={handleAlertUpdated}
-            />
+      ) : filteredAlerts.length === 0 ? (
+        <p className="border border-dashed border-outline-variant/50 bg-surface-container-low px-6 py-12 text-center font-body text-sm text-on-surface-variant italic">
+          {filter === "active"
+            ? "Aucune alerte active pour le moment."
+            : filter === "resolved"
+              ? "Aucune alerte résolue dans l'historique."
+              : "Aucune alerte pour ce filtre."}
+        </p>
+      ) : (
+        <>
+          <div className="entity-grid">
+            {paginatedAlerts.map((alert) => (
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                variant="grid"
+                onSelect={() => setSelectedAlert(alert)}
+              />
+            ))}
           </div>
-        </div>
-      </div>
+
+          <CollectionPagination
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            ariaLabel="Pagination des alertes"
+          />
+        </>
+      )}
+
+      <EntityDetailOverlay
+        open={selectedAlert !== null}
+        onClose={() => setSelectedAlert(null)}
+        ariaLabel="Détail d'alerte"
+      >
+        {selectedAlert ? (
+          <AlertDetail
+            alert={selectedAlert}
+            embedded
+            resolvedStatus={resolvedStatus}
+            onAlertUpdated={handleAlertUpdated}
+          />
+        ) : null}
+      </EntityDetailOverlay>
     </div>
   );
 }

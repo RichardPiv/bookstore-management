@@ -1,6 +1,7 @@
 import { parsePositiveIntId } from "@/lib/api/parse-id";
 import { jsonData, jsonError } from "@/lib/api/responses";
 import { handleRouteError } from "@/lib/api/route-errors";
+import { requirePlayer } from "@/lib/auth";
 import { receiveOrder } from "@/services/orders/orders-service";
 
 type RouteContext = {
@@ -10,6 +11,7 @@ type RouteContext = {
 /** POST /api/orders/:id/receive — receive a pending supplier order */
 export async function POST(_request: Request, context: RouteContext) {
   try {
+    const session = await requirePlayer();
     const { id: rawId } = await context.params;
     const id = parsePositiveIntId(rawId);
 
@@ -17,7 +19,7 @@ export async function POST(_request: Request, context: RouteContext) {
       return jsonError("INVALID_ID", "Invalid identifier.", 400);
     }
 
-    const order = await receiveOrder(id);
+    const order = await receiveOrder(id, session.id);
     return jsonData(order);
   } catch (error) {
     return handleRouteError(error);

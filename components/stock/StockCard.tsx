@@ -15,15 +15,76 @@ type StockCardProps = {
   stock: Stock;
   onSelect: () => void;
   selected?: boolean;
+  variant?: "list" | "grid";
 };
 
 export default function StockCard({
   stock,
   onSelect,
   selected = false,
+  variant = "list",
 }: StockCardProps) {
   const shelfLow = isShelfLow(stock);
   const canTransfer = getMaxTransferQty(stock) > 0;
+
+  if (variant === "grid") {
+    return (
+      <OrnamentalFrame
+        as="button"
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "group flex h-full cursor-pointer flex-col bg-surface-container-low p-4 text-left transition-colors",
+          selected
+            ? "border-primary/60 bg-primary/5"
+            : "hover:border-primary/40 hover:bg-surface-container",
+        )}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {shelfLow ? (
+            <span className="border border-burnished-gold/40 bg-burnished-gold/10 px-2 py-0.5 font-label text-[9px] tracking-[0.2em] text-burnished-gold uppercase">
+              Rayon bas
+            </span>
+          ) : null}
+          {canTransfer ? (
+            <span className="border border-primary/40 bg-primary/10 px-2 py-0.5 font-label text-[9px] tracking-[0.2em] text-primary uppercase">
+              Remise
+            </span>
+          ) : null}
+        </div>
+
+        <h3 className="mb-3 line-clamp-2 font-headline text-base leading-tight text-primary">
+          {stock.title}
+        </h3>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <div className="border border-outline-variant/40 bg-surface px-2 py-2 text-center">
+            <p className="font-label text-[8px] tracking-wider text-outline uppercase">
+              Réserve
+            </p>
+            <p className="font-headline text-lg text-on-surface">
+              {stock.qty_reserve}
+            </p>
+          </div>
+          <div className="border border-outline-variant/40 bg-surface px-2 py-2 text-center">
+            <p className="font-label text-[8px] tracking-wider text-outline uppercase">
+              Rayon
+            </p>
+            <p className="font-headline text-lg text-on-surface">
+              {stock.qty_shelf}/{SHELF_MAX}
+            </p>
+          </div>
+        </div>
+
+        <span className="mt-auto inline-flex items-center gap-1 font-label text-[10px] tracking-widest text-primary uppercase">
+          Gérer
+          <span className="material-symbols-outlined text-sm" aria-hidden>
+            open_in_new
+          </span>
+        </span>
+      </OrnamentalFrame>
+    );
+  }
 
   return (
     <OrnamentalFrame

@@ -67,6 +67,7 @@ function sumPurchaseTotal(
 
 /** Debit treasury once per order line (D62–D65). */
 async function debitSupplierPurchaseLines(
+  userId: number,
   orderId: number,
   lines: {
     id: number;
@@ -77,7 +78,7 @@ async function debitSupplierPurchaseLines(
   tx: TransactionClient,
 ) {
   const total = sumPurchaseTotal(lines);
-  const account = await getAccount(tx);
+  const account = await getAccount(userId, tx);
 
   if (account.balance.lessThan(total)) {
     throw new AppError(
@@ -89,6 +90,7 @@ async function debitSupplierPurchaseLines(
 
   for (const line of lines) {
     await applyDebit(
+      userId,
       {
         type: "supplier_purchase",
         amount: linePurchaseTotal(line),
@@ -154,11 +156,12 @@ async function assertSupplierExists(
 }
 
 async function incrementBookReserve(
+  userId: number,
   bookId: number,
   qty: number,
   tx: TransactionClient,
 ) {
-  await incrementReserveStock(bookId, qty, tx);
+  await incrementReserveStock(userId, bookId, qty, tx);
 }
 
 async function isOrderStatusPending(
@@ -199,7 +202,6 @@ async function enrichOrder(
           id: true,
           title: true,
           purchase_price: true,
-          sale_price: true,
           is_active: true,
         },
       }),
@@ -219,7 +221,7 @@ async function enrichOrder(
         where: { id: order.user_id },
         select: { id: true, username: true },
       }),
-      fetchInventoriesByBookIds(bookIds, tx),
+      fetchInventoriesByBookIds(order.user_id, bookIds, tx),
     ]);
 
   const booksById = new Map(
@@ -229,7 +231,7 @@ async function enrichOrder(
         id: book.id,
         title: book.title,
         purchase_price: book.purchase_price,
-        sale_price: book.sale_price,
+        sale_price: inventory?.sale_price ?? null,
         is_active: book.is_active,
         qty_reserve: inventory?.qty_reserve ?? null,
         qty_shelf: inventory?.qty_shelf ?? null,
@@ -276,15 +278,17 @@ async function enrichOrder(
   };
 }
 
-/** List supplier orders. */
+/** List supplier orders for one player. */
 export async function listOrders(
-  options: ListOrdersOptions = {},
+  options: ListOrdersOptions,
 ): Promise<OrderWithDetails[]> {
   const orders = await prisma.orders.findMany({
-    where:
-      options.order_status_id !== undefined
+    where: {
+      user_id: options.user_id,
+      ...(options.order_status_id !== undefined
         ? { order_status_id: options.order_status_id }
-        : undefined,
+        : {}),
+    },
     select: orderPublicSelect,
     orderBy: { order_datetime: "desc" },
   });
@@ -292,12 +296,16 @@ export async function listOrders(
   return Promise.all(orders.map((order) => enrichOrder(order)));
 }
 
-/** Get an order by id. */
+/** Get an order by id (optionally scoped to a player). */
 export async function getOrderById(
   id: number,
+  userId?: number,
 ): Promise<OrderWithDetails | null> {
-  const order = await prisma.orders.findUnique({
-    where: { id },
+  const order = await prisma.orders.findFirst({
+    where: {
+      id,
+      ...(userId !== undefined ? { user_id: userId } : {}),
+    },
     select: orderPublicSelect,
   });
 
@@ -308,12 +316,16 @@ export async function getOrderById(
   return enrichOrder(order);
 }
 
-/** Create a supplier order (pending reception — debit at validation, stock at /receive). */
-export async function createOrder(body: unknown): Promise<OrderWithDetails> {
+/** Create a supplier order for the authenticated player. */
+export async function createOrder(
+  userId: number,
+  body: unknown,
+): Promise<OrderWithDetails> {
   const input = validateCreateOrderInput(body);
+  const ownerId = userId;
 
   return prisma.$transaction(async (tx) => {
-    await assertUserExists(input.user_id, tx);
+    await assertUserExists(ownerId, tx);
 
     const pricedLines: PricedOrderLine[] = [];
 
@@ -329,7 +341,7 @@ export async function createOrder(body: unknown): Promise<OrderWithDetails> {
     }
 
     const total = sumPurchaseTotal(pricedLines);
-    const account = await getAccount(tx);
+    const account = await getAccount(ownerId, tx);
     if (account.balance.lessThan(total)) {
       throw new AppError(
         "BUSINESS_RULE",
@@ -360,7 +372,7 @@ export async function createOrder(body: unknown): Promise<OrderWithDetails> {
       data: {
         order_datetime: new Date(),
         delivery_id: delivery.id,
-        user_id: input.user_id,
+        user_id: ownerId,
         order_status_id: orderStatusId,
       },
       select: orderPublicSelect,
@@ -387,18 +399,20 @@ export async function createOrder(body: unknown): Promise<OrderWithDetails> {
       },
     });
 
-    // Debit treasury at order validation (panier « Commander »). Stock at /receive.
-    await debitSupplierPurchaseLines(order.id, createdLines, tx);
+    await debitSupplierPurchaseLines(ownerId, order.id, createdLines, tx);
 
     return enrichOrder(order, tx);
   });
 }
 
 /** Receive a pending supplier order (D32 — full reception only). */
-export async function receiveOrder(id: number): Promise<OrderWithDetails> {
+export async function receiveOrder(
+  id: number,
+  userId: number,
+): Promise<OrderWithDetails> {
   return prisma.$transaction(async (tx) => {
-    const order = await tx.orders.findUnique({
-      where: { id },
+    const order = await tx.orders.findFirst({
+      where: { id, user_id: userId },
       select: orderPublicSelect,
     });
 
@@ -431,7 +445,7 @@ export async function receiveOrder(id: number): Promise<OrderWithDetails> {
     }
 
     for (const line of lines) {
-      await incrementBookReserve(line.book_id, line.qty, tx);
+      await incrementBookReserve(userId, line.book_id, line.qty, tx);
     }
 
     const receivedStatusId = await resolveOrderStatusId(

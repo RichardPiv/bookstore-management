@@ -16,12 +16,14 @@ type OrderCardProps = {
   order: Order;
   onSelect: () => void;
   selected?: boolean;
+  variant?: "list" | "grid";
 };
 
 export default function OrderCard({
   order,
   onSelect,
   selected = false,
+  variant = "list",
 }: OrderCardProps) {
   const statusName = order.order_status?.name;
   const pending = isOrderPending(statusName);
@@ -30,6 +32,53 @@ export default function OrderCard({
   const supplierName =
     order.lines.find((line) => line.supplier?.name)?.supplier?.name ??
     "Fournisseur inconnu";
+
+  if (variant === "grid") {
+    return (
+      <OrnamentalFrame
+        as="button"
+        type="button"
+        onClick={onSelect}
+        className={cn(
+          "group flex h-full cursor-pointer flex-col bg-surface-container-low p-4 text-left transition-colors",
+          selected
+            ? "border-primary/60 bg-primary/5"
+            : "hover:border-primary/40 hover:bg-surface-container",
+        )}
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <p className="font-label text-[10px] tracking-[0.2em] text-burnished-gold/70 uppercase">
+            #{order.id}
+          </p>
+          <span
+            className={cn(
+              "border px-2 py-0.5 font-label text-[9px] tracking-[0.2em] uppercase",
+              pending
+                ? "border-burnished-gold/40 bg-burnished-gold/10 text-burnished-gold"
+                : "border-primary/40 bg-primary/10 text-primary",
+            )}
+          >
+            {getOrderStatusLabel(statusName)}
+          </span>
+        </div>
+
+        <h3 className="mb-2 line-clamp-2 font-headline text-base leading-tight text-primary">
+          {linesCount} titre{linesCount > 1 ? "s" : ""} · {itemsCount} ex.
+        </h3>
+
+        <p className="mb-4 line-clamp-2 font-body text-xs text-on-surface-variant">
+          {supplierName} — {formatOrderDate(order.order_datetime)}
+        </p>
+
+        <span className="mt-auto inline-flex items-center gap-1 font-label text-[10px] tracking-widest text-primary uppercase">
+          Voir
+          <span className="material-symbols-outlined text-sm" aria-hidden>
+            open_in_new
+          </span>
+        </span>
+      </OrnamentalFrame>
+    );
+  }
 
   return (
     <OrnamentalFrame

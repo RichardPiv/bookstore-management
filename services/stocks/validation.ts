@@ -66,3 +66,21 @@ export function validateTransferToShelfInput(
 
   return input;
 }
+
+/** Validate POST /api/stocks/sale-price body. */
+export function validateUpdateSalePriceInput(
+  body: unknown,
+): import("./types").UpdateSalePriceInput {
+  if (!body || typeof body !== "object") {
+    throw new AppError("VALIDATION_ERROR", "Invalid request body.", 400);
+  }
+
+  const { book_id, sale_price } = body as Record<string, unknown>;
+
+  assertPositiveInt(book_id, "book_id");
+
+  return {
+    book_id,
+    sale_price: parsePrice(sale_price, "sale_price"),
+  };
+}

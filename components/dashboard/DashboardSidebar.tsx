@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 import { dashboardNav, isNavActive } from "@/components/dashboard/dashboard-nav";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,19 @@ import { cn } from "@/lib/utils";
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   return (
     <aside className="sticky top-0 z-50 flex h-screen w-72 flex-col border-r-2 border-burnished-gold/30 bg-surface-container-lowest">
@@ -68,16 +82,6 @@ export default function DashboardSidebar() {
       </nav>
 
       <div className="mt-auto p-6">
-        <div className="rpg-window">
-          <Link
-            href="/catalog/new"
-            className="rpg-window-inner flex w-full items-center justify-center gap-2 py-3 font-label-sm tracking-widest text-burnished-gold uppercase transition-colors hover:text-primary"
-          >
-            <span className="material-symbols-outlined text-sm">add_box</span>
-            Nouveau Codex
-          </Link>
-        </div>
-
         <div className="mt-6 flex justify-between px-2">
           <Button
             type="button"
@@ -92,8 +96,10 @@ export default function DashboardSidebar() {
             type="button"
             variant="ghost"
             size="icon-sm"
+            disabled={loggingOut}
             className="border-transparent text-on-surface-variant hover:bg-transparent hover:text-error"
             aria-label="Se déconnecter"
+            onClick={() => void handleLogout()}
           >
             <span className="material-symbols-outlined">logout</span>
           </Button>

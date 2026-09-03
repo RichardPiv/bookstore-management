@@ -4,12 +4,12 @@
  * - auteurs (auteurs.json + auteurs rencontrés dans le catalogue)
  * - 1 fournisseur MVP
  * - order_statuses / delivery_statuses / alert_statuses / alert_types
- * - treasury_account (capital initial si absent — D61)
+ * - admin user (admin / Admin123!) si absent
  * - ~671 livres (JSON catalogue → books + books_authors)
  *
  * Champs générés (déterministes via lore_code) : ean, isbn, publication_date
  * editor ← collection lore (fallback maison Port-Aster)
- * purchase_price ← price lore ; sale_price = purchase_price par défaut (modifiable ensuite)
+ * purchase_price ← price lore (prix d'achat admin ; prix de vente = inventaire joueur)
  *
  * Usage : npm run db:seed
  * Idempotent : skip référentiels existants (name unique) ;
@@ -21,6 +21,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
+import bcrypt from "bcryptjs";
 import { Prisma, PrismaClient } from "../lib/generated/prisma/client";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -535,7 +536,6 @@ async function seedBooks(
         ean,
         isbn,
         purchase_price: purchasePrice,
-        sale_price: purchasePrice,
         rarity: book.rarity,
         cover_url: null,
         category_id: categoryId,
@@ -572,28 +572,34 @@ async function seedBooks(
   }
 }
 
-async function seedTreasuryAccount(prisma: PrismaClient) {
-  const existing = await prisma.treasury_account.findUnique({
-    where: { id: 1 },
-    select: { id: true, balance: true },
+async function seedAdminUser(prisma: PrismaClient) {
+  const existing = await prisma.users.findUnique({
+    where: { username: "admin" },
+    select: { id: true, role: true },
   });
 
   if (existing) {
-    console.log(
-      `treasury_account: déjà présent (id=${existing.id}, balance=${existing.balance})`,
-    );
+    if (existing.role !== "admin") {
+      await prisma.users.update({
+        where: { id: existing.id },
+        data: { role: "admin" },
+      });
+      console.log("users: admin existant — rôle corrigé en admin");
+      return;
+    }
+    console.log("users: admin déjà présent");
     return;
   }
 
-  await prisma.treasury_account.create({
+  await prisma.users.create({
     data: {
-      id: 1,
-      balance: 10000,
-      low_threshold: 1000,
-      updated_at: new Date(),
+      username: "admin",
+      email: "admin@example.com",
+      password: await bcrypt.hash("Admin123!", 12),
+      role: "admin",
     },
   });
-  console.log("treasury_account: créé (balance=10000, low_threshold=1000)");
+  console.log("users: admin créé (admin / Admin123!)");
 }
 
 async function main() {
@@ -610,7 +616,7 @@ async function main() {
     const authorCache = await seedAuthors(prisma, authorNamesFromBooks);
     await seedSupplier(prisma);
     await seedReferenceStatuses(prisma);
-    await seedTreasuryAccount(prisma);
+    await seedAdminUser(prisma);
     await seedBooks(prisma, authorCache);
   } finally {
     await prisma.$disconnect();
