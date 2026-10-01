@@ -33,6 +33,10 @@ export const SIMULATION_EVENT_LABELS: Record<string, string> = {
   CUSTOMER_PURCHASE: "Achat",
   UNAVAILABLE_REQUEST: "Demande impossible",
   NO_STOCK: "Aucun stock",
+  TASK_COMPLETED: "Tâche",
+  DAY_CLOSED: "Fermeture",
+  CUSTOMER_LEAVE_EMPTY: "Départ à vide",
+  LIVE_EVENT: "Annales",
 };
 
 export function getEventTypeLabel(type: string) {

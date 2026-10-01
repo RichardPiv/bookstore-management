@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import HeaderTreasuryBalance from "@/components/dashboard/HeaderTreasuryBalance";
+import HeaderSimulationStatus from "@/components/dashboard/HeaderSimulationStatus";
 
 const HEADER_ACTIONS = [
   { icon: "search", label: "Rechercher" },
@@ -51,6 +52,7 @@ export default function DashboardHeader() {
       </div>
 
       <div className="flex items-center gap-4 md:gap-8">
+        <HeaderSimulationStatus />
         <HeaderTreasuryBalance />
 
         <div className="flex items-center gap-4 md:gap-6">

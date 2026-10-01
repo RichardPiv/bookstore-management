@@ -28,6 +28,7 @@ export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
   customer_sale: "Vente client",
   adjustment_in: "Ajustement (+)",
   adjustment_out: "Ajustement (−)",
+  wage: "Paie des employés",
 };
 
 export function formatFlorins(value: unknown): string {

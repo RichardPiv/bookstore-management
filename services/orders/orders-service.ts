@@ -401,6 +401,27 @@ export async function createOrder(
 
     await debitSupplierPurchaseLines(ownerId, order.id, createdLines, tx);
 
+    const existingReceive = await tx.tasks.findFirst({
+      where: {
+        user_id: ownerId,
+        type: "RECEIVE_DELIVERY",
+        order_id: order.id,
+        status: { in: ["pending", "in_progress"] },
+      },
+      select: { id: true },
+    });
+    if (!existingReceive) {
+      await tx.tasks.create({
+        data: {
+          user_id: ownerId,
+          type: "RECEIVE_DELIVERY",
+          order_id: order.id,
+          priority: 8,
+          status: "pending",
+        },
+      });
+    }
+
     return enrichOrder(order, tx);
   });
 }
@@ -409,9 +430,10 @@ export async function createOrder(
 export async function receiveOrder(
   id: number,
   userId: number,
+  tx: TransactionClient = prisma,
 ): Promise<OrderWithDetails> {
-  return prisma.$transaction(async (tx) => {
-    const order = await tx.orders.findFirst({
+  const run = async (client: TransactionClient) => {
+    const order = await client.orders.findFirst({
       where: { id, user_id: userId },
       select: orderPublicSelect,
     });
@@ -420,7 +442,7 @@ export async function receiveOrder(
       throw new AppError("NOT_FOUND", "Order not found.", 404);
     }
 
-    const pending = await isOrderStatusPending(order.order_status_id, tx);
+    const pending = await isOrderStatusPending(order.order_status_id, client);
     if (!pending) {
       throw new AppError(
         "BUSINESS_RULE",
@@ -429,7 +451,7 @@ export async function receiveOrder(
       );
     }
 
-    const lines = await tx.orders_lines.findMany({
+    const lines = await client.orders_lines.findMany({
       where: { order_id: id },
       orderBy: { id: "asc" },
       select: {
@@ -441,29 +463,29 @@ export async function receiveOrder(
     });
 
     for (const line of lines) {
-      await assertBookOrderable(line.book_id, tx);
+      await assertBookOrderable(line.book_id, client);
     }
 
     for (const line of lines) {
-      await incrementBookReserve(userId, line.book_id, line.qty, tx);
+      await incrementBookReserve(userId, line.book_id, line.qty, client);
     }
 
     const receivedStatusId = await resolveOrderStatusId(
       RECEIVED_ORDER_STATUS_NAMES,
-      tx,
+      client,
     );
     const deliveredStatusId = await resolveDeliveryStatusId(
       DELIVERED_DELIVERY_STATUS_NAMES,
-      tx,
+      client,
     );
 
-    const updatedOrder = await tx.orders.update({
+    const updatedOrder = await client.orders.update({
       where: { id },
       data: { order_status_id: receivedStatusId },
       select: orderPublicSelect,
     });
 
-    await tx.deliveries.update({
+    await client.deliveries.update({
       where: { id: order.delivery_id },
       data: {
         delivery_status_id: deliveredStatusId,
@@ -471,6 +493,11 @@ export async function receiveOrder(
       },
     });
 
-    return enrichOrder(updatedOrder, tx);
-  });
+    return enrichOrder(updatedOrder, client);
+  };
+
+  if (tx === prisma) {
+    return prisma.$transaction(run);
+  }
+  return run(tx);
 }

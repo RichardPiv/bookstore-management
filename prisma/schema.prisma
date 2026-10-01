@@ -233,3 +233,67 @@ model treasury_movements {
   @@index([book_id], map: "idx_treasury_movements_book_id")
   @@index([simulation_event_id], map: "idx_treasury_movements_simulation_event_id")
 }
+
+/** Horloge live par joueur (D68, D74). status: running | paused */
+model simulation_clock {
+  id             Int      @id @default(autoincrement())
+  user_id        Int      @unique(map: "simulation_clock_user_id") @db.UnsignedInt
+  sim_day        Int      @default(1) @db.UnsignedInt
+  sim_minutes    Int      @default(540) @db.UnsignedInt
+  speed          Int      @default(1)
+  status         String   @default("paused") @db.VarChar(16)
+  snapshot_json  String?  @db.Text
+  updated_at     DateTime @default(now()) @db.DateTime(0)
+}
+
+/**
+ * Employés du joueur (D79–D80).
+ * role: clerk | stocker | receiver
+ * status: idle | working | paused | dismissed
+ */
+model employees {
+  id              Int      @id @default(autoincrement())
+  user_id         Int      @db.UnsignedInt
+  name            String   @db.VarChar(120)
+  role            String   @db.VarChar(32)
+  wage_daily      Decimal  @db.Decimal(10, 2)
+  hired_at        DateTime @default(now()) @db.DateTime(0)
+  status          String   @default("idle") @db.VarChar(16)
+  appearance_json String   @db.Text
+  stats_json      String   @db.Text
+  lore_code       String?  @db.VarChar(32)
+  is_dismissible  Boolean  @default(true)
+
+  @@index([user_id], map: "employees_user_id")
+  @@index([user_id, status], map: "employees_user_status")
+}
+
+/** File de tâches opérationnelles (phase D). */
+model tasks {
+  id           Int       @id @default(autoincrement())
+  user_id      Int       @db.UnsignedInt
+  type         String    @db.VarChar(32)
+  book_id      Int?
+  order_id     Int?
+  status       String    @default("pending") @db.VarChar(16)
+  assignee_id  Int?
+  priority     Int       @default(0)
+  created_at   DateTime  @default(now()) @db.DateTime(0)
+  completed_at DateTime? @db.DateTime(0)
+
+  @@index([user_id, status], map: "tasks_user_status")
+  @@index([assignee_id], map: "tasks_assignee_id")
+  @@index([book_id], map: "tasks_book_id")
+  @@index([order_id], map: "tasks_order_id")
+}
+
+/** Plan canonique de la boutique (phase F). Coordonnées = cases de grille. */
+model locations {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique(map: "locations_code") @db.VarChar(64)
+  name      String  @db.VarChar(120)
+  kind      String  @db.VarChar(32)
+  x         Int
+  y         Int
+  parent_id Int?
+}

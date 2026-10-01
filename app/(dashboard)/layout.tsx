@@ -4,6 +4,7 @@ import DashboardFooter from "@/components/dashboard/DashboardFooter";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 import TreasuryBalanceProvider from "@/components/treasury/TreasuryBalanceProvider";
+import { SimulationRuntimeProvider } from "@/components/simulation-runtime/SimulationRuntimeProvider";
 import { getSessionUser } from "@/lib/auth";
 import { isPlayerRole } from "@/lib/roles";
 import { getTreasuryOverview } from "@/services/treasury/treasury-service";
@@ -33,6 +34,7 @@ export default async function DashboardLayout({
 
   return (
     <TreasuryBalanceProvider initialOverview={initialOverview}>
+      <SimulationRuntimeProvider>
       <div className="flex h-screen min-h-0 overflow-hidden">
         <DashboardSidebar />
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -43,6 +45,7 @@ export default async function DashboardLayout({
           <DashboardFooter />
         </div>
       </div>
+      </SimulationRuntimeProvider>
     </TreasuryBalanceProvider>
   );
 }

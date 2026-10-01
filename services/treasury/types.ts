@@ -6,6 +6,7 @@ export const TREASURY_MOVEMENT_TYPES = [
   "customer_sale",
   "adjustment_in",
   "adjustment_out",
+  "wage",
 ] as const;
 
 export type TreasuryMovementType = (typeof TREASURY_MOVEMENT_TYPES)[number];
@@ -13,6 +14,7 @@ export type TreasuryMovementType = (typeof TREASURY_MOVEMENT_TYPES)[number];
 export const TREASURY_DEBIT_TYPES = [
   "supplier_purchase",
   "adjustment_out",
+  "wage",
 ] as const satisfies readonly TreasuryMovementType[];
 
 export const TREASURY_CREDIT_TYPES = [

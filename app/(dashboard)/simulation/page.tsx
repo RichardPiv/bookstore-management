@@ -1,11 +1,9 @@
-import SimulationPanel from "@/components/simulation/SimulationPanel";
+import SimulationLiveView from "@/components/simulation/SimulationLiveView";
 
 export default function SimulationPage() {
   return (
-    <div className="flex-1 space-y-12 overflow-y-auto p-12">
-      <div className="mx-auto max-w-7xl">
-        <SimulationPanel />
-      </div>
+    <div className="flex h-[calc(100vh-6.5rem)] min-h-0 flex-col overflow-hidden">
+      <SimulationLiveView />
     </div>
   );
 }

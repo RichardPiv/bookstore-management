@@ -5,6 +5,7 @@ import { inventoryPublicSelect } from "@/services/inventory/types";
 import type { StockPublic } from "@/services/stocks/types";
 import { decrementShelfStock } from "@/services/stocks/stocks-service";
 import { recordSale } from "@/services/treasury/treasury-service";
+import { ensureRestockTask } from "@/services/tasks/tasks-service";
 
 import {
   simulationEventSelect,
@@ -187,6 +188,8 @@ export async function runSimulation(
             },
             tx,
           );
+
+          await ensureRestockTask(userId, updated.id, tx);
 
           events.push(event);
         } catch (error) {

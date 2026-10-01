@@ -13,6 +13,7 @@ const PLAYER_PREFIXES = [
   "/treasury",
   "/alerts",
   "/simulation",
+  "/staff",
   "/profile",
 ] as const;
 
@@ -87,6 +88,8 @@ export const config = {
     "/alerts/:path*",
     "/simulation",
     "/simulation/:path*",
+    "/staff",
+    "/staff/:path*",
     "/profile",
     "/profile/:path*",
   ],

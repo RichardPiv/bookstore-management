@@ -300,3 +300,58 @@ export async function recordSale(
     qty,
   };
 }
+
+export type RecordWageResult = {
+  paid: Prisma.Decimal;
+  unpaid: Prisma.Decimal;
+  movements: TreasuryMovementPublic[];
+};
+
+/**
+ * Pay daily wages at simulated closing (D72).
+ * Never drives the balance negative (L2 / D63). Unpaid remainder lowers morale.
+ */
+export async function recordDailyWages(
+  userId: number,
+  employees: Array<{ id: number; name: string; wage_daily: Prisma.Decimal | string | number }>,
+  tx: TransactionClient = prisma,
+): Promise<RecordWageResult> {
+  const run = async (client: TransactionClient) => {
+    let remaining = (await getAccountOrThrow(userId, client)).balance;
+    let paid = new Prisma.Decimal(0);
+    let unpaid = new Prisma.Decimal(0);
+    const movements: TreasuryMovementPublic[] = [];
+
+    for (const employee of employees) {
+      const wage = new Prisma.Decimal(employee.wage_daily);
+      if (wage.lessThanOrEqualTo(0)) continue;
+      const portion = remaining.lessThan(wage) ? remaining : wage;
+      if (portion.lessThanOrEqualTo(0)) {
+        unpaid = unpaid.plus(wage);
+        continue;
+      }
+      const result = await applyMovement(
+        userId,
+        {
+          type: "wage",
+          amount: portion,
+          note: `Paie du jour — ${employee.name}`,
+        },
+        client,
+      );
+      movements.push(result.movement);
+      remaining = result.account.balance;
+      paid = paid.plus(portion);
+      if (portion.lessThan(wage)) {
+        unpaid = unpaid.plus(wage.minus(portion));
+      }
+    }
+
+    return { paid, unpaid, movements };
+  };
+
+  if (tx === prisma) {
+    return prisma.$transaction((client) => run(client));
+  }
+  return run(tx);
+}
