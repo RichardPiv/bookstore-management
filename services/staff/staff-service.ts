@@ -7,9 +7,12 @@ import {
   serializeDna,
 } from "@/scripts/characters/dna";
 import {
+  applyXpGains,
   defaultStats,
+  parseStats,
   type EmployeeRole,
   type EmployeeStats,
+  type StaffXpKind,
 } from "@/simulation/types";
 
 import { employeeSelect, type EmployeePublic, type StaffCandidate } from "./types";
@@ -69,6 +72,11 @@ function jitter(base: EmployeeStats, seed: number): EmployeeStats {
     restock_speed: clamp(base.restock_speed + n(5)),
     carry: clamp(base.carry + n(6)),
     receive_speed: clamp(base.receive_speed + n(7)),
+    specialty_shelf:
+      base.specialty_shelf ??
+      (["shelf_his", "shelf_arc", "shelf_bot", "shelf_nec"] as const)[
+        Math.abs(seed) % 4
+      ]!,
   };
 }
 
@@ -83,6 +91,11 @@ export async function ensureStarterStaff(
 
   for (const starter of STARTER) {
     const stats = defaultStats(starter.role);
+    if (starter.role === "clerk") {
+      stats.specialty_shelf = "shelf_his";
+    } else if (starter.role === "stocker") {
+      stats.specialty_shelf = "shelf_arc";
+    }
     const dna = generateDna(`lore-${starter.lore_code}-${userId}`, {
       outfit: outfitForRole(starter.role),
     });
@@ -103,8 +116,33 @@ export async function ensureStarterStaff(
   }
 }
 
+/**
+ * P2.3 / L1 : Elian & Maëline restent employés jouables non licenciables
+ * (pas de simples NPC caméra). Réaffirme le flag si une ancienne save diverge.
+ */
+export async function ensureLoreStaffFlags(
+  userId: number,
+  tx: TransactionClient = prisma,
+): Promise<void> {
+  for (const starter of STARTER.filter((row) => !row.dismissible)) {
+    await tx.employees.updateMany({
+      where: {
+        user_id: userId,
+        lore_code: starter.lore_code,
+        status: { not: "dismissed" },
+      },
+      data: {
+        is_dismissible: false,
+        name: starter.name,
+        role: starter.role,
+      },
+    });
+  }
+}
+
 export async function listEmployees(userId: number): Promise<EmployeePublic[]> {
   await ensureStarterStaff(userId);
+  await ensureLoreStaffFlags(userId);
   return prisma.employees.findMany({
     where: { user_id: userId, status: { not: "dismissed" } },
     select: employeeSelect,
@@ -197,20 +235,72 @@ export async function dismissEmployee(
 export async function patchEmployee(
   userId: number,
   id: number,
-  body: { role?: EmployeeRole; status?: "idle" | "paused" },
+  body: {
+    role?: EmployeeRole;
+    status?: "idle" | "paused";
+    specialty_shelf?: string | null;
+    counter_focus?: boolean;
+  },
 ): Promise<EmployeePublic> {
   const employee = await getEmployee(userId, id);
   if (!employee) {
     throw new AppError("NOT_FOUND", "Employee not found.", 404);
   }
+
+  let stats = parseStats(employee.stats_json);
+  let statsChanged = false;
+  if (body.specialty_shelf !== undefined) {
+    const raw = body.specialty_shelf;
+    if (raw === null || raw === "" || raw === "none") {
+      stats.specialty_shelf = null;
+    } else if (/^shelf_[a-z0-9]+$/i.test(raw)) {
+      stats.specialty_shelf = raw.toLowerCase();
+    } else {
+      throw new AppError("VALIDATION_ERROR", "Invalid specialty_shelf.", 400);
+    }
+    statsChanged = true;
+  }
+  if (body.counter_focus !== undefined) {
+    stats.counter_focus = Boolean(body.counter_focus);
+    statsChanged = true;
+  }
+  if (body.role && body.role !== employee.role) {
+    // Nouveau rôle : garder XP / moral, recalibrer focus par défaut si non fourni
+    if (body.counter_focus === undefined) {
+      stats.counter_focus = body.role === "clerk";
+      statsChanged = true;
+    }
+  }
+
   return prisma.employees.update({
     where: { id: employee.id },
     data: {
       ...(body.role ? { role: body.role } : {}),
       ...(body.status ? { status: body.status } : {}),
+      ...(statsChanged ? { stats_json: JSON.stringify(stats) } : {}),
     },
     select: employeeSelect,
   });
+}
+
+/** Formation légère après une tâche réussie (P1.5). */
+export async function applyTaskXp(
+  userId: number,
+  employeeId: number,
+  kind: StaffXpKind,
+  tx: TransactionClient = prisma,
+): Promise<EmployeeStats | null> {
+  const row = await tx.employees.findFirst({
+    where: { id: employeeId, user_id: userId, status: { not: "dismissed" } },
+    select: { id: true, stats_json: true },
+  });
+  if (!row) return null;
+  const stats = applyXpGains(parseStats(row.stats_json), kind);
+  await tx.employees.update({
+    where: { id: row.id },
+    data: { stats_json: JSON.stringify(stats) },
+  });
+  return stats;
 }
 
 export async function applyMoraleDelta(

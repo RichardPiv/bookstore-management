@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import ReliquaryFrame from "@/components/dashboard/ReliquaryFrame";
 import StaffPortrait from "@/components/staff/StaffPortrait";
 import { parseStats } from "@/simulation/types";
+import { useSimulationRuntimeOptional } from "@/components/simulation-runtime/SimulationRuntimeProvider";
 
 type Employee = {
   id: number;
@@ -29,6 +30,8 @@ const ROLE_LABEL: Record<string, string> = {
 export default function StaffList() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const runtime = useSimulationRuntimeOptional();
+  const unpaid = runtime?.hud.unpaid_wages;
 
   useEffect(() => {
     void (async () => {
@@ -48,6 +51,24 @@ export default function StaffList() {
 
   return (
     <div className="mt-10 space-y-6">
+      {unpaid ? (
+        <div
+          className="border border-error/40 bg-error/10 px-4 py-3"
+          role="alert"
+        >
+          <p className="font-label text-[10px] tracking-widest text-error uppercase">
+            Paie insolvable
+          </p>
+          <p className="mt-1 font-body text-sm text-error/90">
+            La dernière fermeture n&apos;a pas couvert tous les salaires. Le
+            moral de l&apos;équipe en pâtit.{" "}
+            <Link href="/treasury" className="underline underline-offset-4">
+              Voir la trésorerie
+            </Link>
+          </p>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-body text-sm text-on-surface-variant">
           {employees.length} archiviste{employees.length > 1 ? "s" : ""} en poste
@@ -78,11 +99,20 @@ export default function StaffList() {
                   <p className="font-label text-[10px] tracking-widest text-burnished-gold/70 uppercase">
                     {ROLE_LABEL[employee.role] ?? employee.role}
                     {employee.lore_code ? ` · ${employee.lore_code}` : ""}
+                    {!employee.is_dismissible ? " · lore" : ""}
                   </p>
                   <h3 className="font-headline text-xl text-primary">{employee.name}</h3>
+                  {!employee.is_dismissible ? (
+                    <p className="mt-0.5 font-body text-[11px] text-on-surface-variant">
+                      Personnel officiel — non licenciable
+                    </p>
+                  ) : null}
                   <p className="mt-1 font-label text-[10px] tracking-widest text-on-surface-variant uppercase">
-                    {wage} F / jour · moral {Math.round(stats.morale)} · fatigue{" "}
-                    {Math.round(stats.fatigue)}
+                    {wage} F / jour · moral {Math.round(stats.morale)} · XP{" "}
+                    {Math.round(stats.xp ?? 0)}
+                    {stats.specialty_shelf
+                      ? ` · ${String(stats.specialty_shelf).replace(/^shelf_/, "").toUpperCase()}`
+                      : ""}
                   </p>
                 </div>
               </ReliquaryFrame>

@@ -7,6 +7,14 @@ import {
   IN_PROGRESS_ORDER_STATUS_NAMES,
   RECEIVED_ORDER_STATUS_NAMES,
 } from "@/lib/order-statuses";
+import {
+  encodeSimEta,
+  formatSimEtaLabel,
+  hasSimEtaArrived,
+  decodeSimEta,
+  rollDeliveryDelayMinutes,
+  simTotal,
+} from "@/lib/sim-delivery-eta";
 import { prisma } from "@/lib/prisma";
 import {
   resolveDeliveryStatusId,
@@ -29,6 +37,7 @@ import {
   applyDebit,
   getAccount,
 } from "@/services/treasury/treasury-service";
+import { ensureClock } from "@/services/clock/clock-service";
 
 import {
   orderPublicSelect,
@@ -38,6 +47,16 @@ import {
   type OrderWithDetails,
 } from "./types";
 import { validateCreateOrderInput } from "./validation";
+
+export type InboundDelivery = {
+  order_id: number;
+  delivery_id: number;
+  eta_sim_day: number;
+  eta_sim_minutes: number;
+  eta_label: string;
+  arrived: boolean;
+  has_receive_task: boolean;
+};
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -269,12 +288,32 @@ async function enrichOrder(
     supplier: suppliersById.get(line.supplier_id) ?? null,
   }));
 
+  const pendingOrder = orderStatus
+    ? (IN_PROGRESS_ORDER_STATUS_NAMES as readonly string[]).includes(
+        orderStatus.name,
+      )
+    : false;
+  let convoy_eta_label: string | null = null;
+  let convoy_arrived = false;
+  if (pendingOrder && delivery) {
+    const eta = decodeSimEta(delivery.delivery_datetime);
+    convoy_eta_label = formatSimEtaLabel(eta.sim_day, eta.sim_minutes);
+    const clock = await ensureClock(order.user_id, tx);
+    convoy_arrived = hasSimEtaArrived(
+      delivery.delivery_datetime,
+      clock.sim_day,
+      clock.sim_minutes,
+    );
+  }
+
   return {
     ...order,
     lines: enrichedLines,
     order_status: orderStatus,
     delivery: deliveryWithStatus,
     user,
+    convoy_eta_label,
+    convoy_arrived,
   };
 }
 
@@ -359,11 +398,19 @@ export async function createOrder(
       tx,
     );
 
+    const clock = await ensureClock(ownerId, tx);
+    const delay = rollDeliveryDelayMinutes();
+    const etaTotal =
+      simTotal(clock.sim_day, clock.sim_minutes) + delay;
+    const etaDay = Math.max(1, Math.floor(etaTotal / (24 * 60)));
+    const etaMinutes = etaTotal % (24 * 60);
+
     const delivery = await tx.deliveries.create({
       data: {
         type: "supplier",
         delivery_status_id: deliveryStatusId,
-        delivery_datetime: new Date(),
+        /** ETA simulée encodée (P1.1) — pas l’heure murale d’arrivée. */
+        delivery_datetime: encodeSimEta(etaDay, etaMinutes),
       },
       select: deliveryPublicSelect,
     });
@@ -401,29 +448,111 @@ export async function createOrder(
 
     await debitSupplierPurchaseLines(ownerId, order.id, createdLines, tx);
 
-    const existingReceive = await tx.tasks.findFirst({
-      where: {
-        user_id: ownerId,
+    // P1.1 : pas de RECEIVE_DELIVERY immédiat — le convoi arrive après le délai sim.
+    return enrichOrder(order, tx);
+  });
+}
+
+/** Commandes fournisseur encore en transit ou au quai (non reçues). */
+export async function listInboundDeliveries(
+  userId: number,
+  simDay: number,
+  simMinutes: number,
+  tx: TransactionClient = prisma,
+): Promise<InboundDelivery[]> {
+  const pendingStatusIds = await tx.order_statuses.findMany({
+    where: { name: { in: [...IN_PROGRESS_ORDER_STATUS_NAMES] } },
+    select: { id: true },
+  });
+  if (pendingStatusIds.length === 0) return [];
+
+  const orders = await tx.orders.findMany({
+    where: {
+      user_id: userId,
+      order_status_id: { in: pendingStatusIds.map((row) => row.id) },
+    },
+    select: { id: true, delivery_id: true },
+    orderBy: { id: "asc" },
+  });
+  if (orders.length === 0) return [];
+
+  const deliveries = await tx.deliveries.findMany({
+    where: { id: { in: orders.map((row) => row.delivery_id) } },
+    select: deliveryPublicSelect,
+  });
+  const deliveryById = new Map(deliveries.map((row) => [row.id, row]));
+
+  const receiveTasks = await tx.tasks.findMany({
+    where: {
+      user_id: userId,
+      type: "RECEIVE_DELIVERY",
+      order_id: { in: orders.map((row) => row.id) },
+      status: { in: ["pending", "in_progress"] },
+    },
+    select: { order_id: true },
+  });
+  const hasTask = new Set(
+    receiveTasks.map((row) => row.order_id).filter((id): id is number => id != null),
+  );
+
+  const inbound: InboundDelivery[] = [];
+  for (const order of orders) {
+    const delivery = deliveryById.get(order.delivery_id);
+    if (!delivery) continue;
+    const eta = decodeSimEta(delivery.delivery_datetime);
+    const arrived = hasSimEtaArrived(
+      delivery.delivery_datetime,
+      simDay,
+      simMinutes,
+    );
+    inbound.push({
+      order_id: order.id,
+      delivery_id: delivery.id,
+      eta_sim_day: eta.sim_day,
+      eta_sim_minutes: eta.sim_minutes,
+      eta_label: formatSimEtaLabel(eta.sim_day, eta.sim_minutes),
+      arrived,
+      has_receive_task: hasTask.has(order.id),
+    });
+  }
+  return inbound;
+}
+
+/**
+ * Quand l’ETA sim est atteinte : crée `RECEIVE_DELIVERY` (convoi au quai).
+ * `force` = ignorer l’ETA (Mode 1 / événement SUPPLIER_DELIVERY).
+ */
+export async function promoteArrivedDeliveries(
+  userId: number,
+  simDay: number,
+  simMinutes: number,
+  tx: TransactionClient,
+  options: { forceOrderId?: number; forceAll?: boolean } = {},
+): Promise<Array<{ order_id: number; task_id: number; forced: boolean }>> {
+  const inbound = await listInboundDeliveries(userId, simDay, simMinutes, tx);
+  const promoted: Array<{ order_id: number; task_id: number; forced: boolean }> =
+    [];
+
+  for (const row of inbound) {
+    if (row.has_receive_task) continue;
+    const forced =
+      options.forceAll === true || options.forceOrderId === row.order_id;
+    if (!row.arrived && !forced) continue;
+
+    const task = await tx.tasks.create({
+      data: {
+        user_id: userId,
         type: "RECEIVE_DELIVERY",
-        order_id: order.id,
-        status: { in: ["pending", "in_progress"] },
+        order_id: row.order_id,
+        priority: 9,
+        status: "pending",
       },
       select: { id: true },
     });
-    if (!existingReceive) {
-      await tx.tasks.create({
-        data: {
-          user_id: ownerId,
-          type: "RECEIVE_DELIVERY",
-          order_id: order.id,
-          priority: 8,
-          status: "pending",
-        },
-      });
-    }
+    promoted.push({ order_id: row.order_id, task_id: task.id, forced });
+  }
 
-    return enrichOrder(order, tx);
-  });
+  return promoted;
 }
 
 /** Receive a pending supplier order (D32 — full reception only). */

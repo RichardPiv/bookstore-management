@@ -1,7 +1,11 @@
 import * as THREE from "three";
 import { MapControls } from "three/addons/controls/MapControls.js";
 
-import { composeCharacterCanvas } from "@/scripts/characters/compose-character";
+import { composeCharacterDetailed } from "@/scripts/characters/compose-character";
+import {
+  onCharacterAssetReady,
+  warmDnaPose,
+} from "@/scripts/characters/asset-cache";
 import {
   resolveAnim,
   resolveFrame,
@@ -23,7 +27,7 @@ const CELL = 0.5;
 const SPRITE_W = 2.0;
 const SPRITE_H = 2.85;
 /** Décale le plan vers la caméra pour le depth vs rayons. */
-const SPRITE_DEPTH_BIAS = 0.48;
+const SPRITE_DEPTH_BIAS = 0.58;
 
 /** Caméra management : vue penchée plus aérienne — centrée salle de vente. */
 const CAM_POS = new THREE.Vector3(0.5, 22.5, 26.5);
@@ -107,6 +111,8 @@ function clearFurnitureOverlap(wx: number, wz: number): { x: number; z: number }
 type SpriteEntry = {
   mesh: THREE.Mesh;
   lastKey: string;
+  /** Pose encore en fallback procédural (PNG pas prêt). */
+  provisional: boolean;
   display: THREE.Vector3;
 };
 
@@ -131,6 +137,7 @@ export class FloorScene {
     this.charTextures.clear();
     for (const entry of this.sprites.values()) {
       entry.lastKey = "";
+      entry.provisional = true;
     }
   }
   private resizeObserver: ResizeObserver | null = null;
@@ -138,6 +145,7 @@ export class FloorScene {
   private onContextMenu: ((event: Event) => void) | null = null;
   private onControlsStart: (() => void) | null = null;
   private onControlsEnd: (() => void) | null = null;
+  private unsubAssets: (() => void) | null = null;
   private canvas: HTMLCanvasElement;
   private panMinX = -12;
   private panMaxX = 12;
@@ -205,6 +213,13 @@ export class FloorScene {
     this.bindResize(canvas);
     this.bindPick(canvas);
     this.loop();
+
+    // Lazy : recompose les sprites provisoires dès qu’un PNG arrive
+    this.unsubAssets = onCharacterAssetReady(() => {
+      for (const entry of this.sprites.values()) {
+        if (entry.provisional) entry.lastKey = "";
+      }
+    });
   }
 
   /** Remet la caméra à la vue aérienne par défaut (salle de vente). */
@@ -216,6 +231,8 @@ export class FloorScene {
 
   destroy() {
     window.cancelAnimationFrame(this.raf);
+    this.unsubAssets?.();
+    this.unsubAssets = null;
     this.resizeObserver?.disconnect();
     if (this.onClick) {
       this.canvas.removeEventListener("click", this.onClick);
@@ -1049,7 +1066,18 @@ export class FloorScene {
     const agents = this.getAgents();
     const seen = new Set<string>();
     const cam = this.camera.position;
-    for (const agent of agents) {
+
+    // P2.2 — agents lointains d’abord (renderOrder) pour transparence correcte
+    const ranked = [...agents].sort((a, b) => {
+      const wa = toWorld(a.x, a.y);
+      const wb = toWorld(b.x, b.y);
+      const da = Math.hypot(cam.x - wa.x, cam.z - wa.z);
+      const db = Math.hypot(cam.x - wb.x, cam.z - wb.z);
+      return db - da;
+    });
+
+    for (let i = 0; i < ranked.length; i += 1) {
+      const agent = ranked[i]!;
       seen.add(agent.id);
       let entry = this.sprites.get(agent.id);
       const anim = resolveAnim(agent.walking);
@@ -1065,7 +1093,7 @@ export class FloorScene {
           transparent: true,
           depthWrite: false,
           depthTest: true,
-          alphaTest: 0.35,
+          alphaTest: 0.4,
           side: THREE.DoubleSide,
         });
         const mesh = new THREE.Mesh(geo, mat);
@@ -1075,10 +1103,16 @@ export class FloorScene {
         entry = {
           mesh,
           lastKey: "",
+          provisional: true,
           display: toWorld(agent.x, agent.y),
         };
         this.sprites.set(agent.id, entry);
       }
+
+      warmDnaPose(agent.dna, agent.facing, anim, frame, {
+        prefetchNeighbors: true,
+      });
+
       const target = toWorld(agent.x, agent.y);
       const cleared = clearFurnitureOverlap(target.x, target.z);
       target.x = cleared.x;
@@ -1097,35 +1131,41 @@ export class FloorScene {
       bx /= blen;
       by /= blen;
       bz /= blen;
+      const dist = Math.hypot(cam.x - px, cam.z - pz);
+      const bias = SPRITE_DEPTH_BIAS + Math.min(0.25, dist * 0.004);
       entry.mesh.position.set(
-        px + bx * SPRITE_DEPTH_BIAS,
-        0.02 + by * SPRITE_DEPTH_BIAS * 0.15,
-        pz + bz * SPRITE_DEPTH_BIAS,
+        px + bx * bias,
+        0.02 + by * bias * 0.15,
+        pz + bz * bias,
       );
       // Canvas toujours lisible : yaw vers la caméra (pas vers la marche)
       entry.mesh.rotation.set(0, Math.atan2(bx, bz), 0);
-      entry.mesh.renderOrder = 2;
+      entry.mesh.renderOrder = 2 + i;
 
       const mat = entry.mesh.material as THREE.MeshBasicMaterial;
       mat.color.set(selected ? 0xffedc1 : 0xffffff);
-      if (entry.lastKey !== key) {
-        let texture = this.charTextures.get(key);
+      const waitingSamePose =
+        entry.provisional && entry.lastKey === `${key}:tmp`;
+      if (entry.lastKey !== key && !waitingSamePose) {
+        const { canvas, provisional } = composeCharacterDetailed(agent.dna, {
+          facing: agent.facing,
+          anim,
+          frame,
+        });
+        const cacheKey = provisional ? `${key}:tmp` : key;
+        let texture = this.charTextures.get(cacheKey);
         if (!texture) {
-          const canvas = composeCharacterCanvas(agent.dna, {
-            facing: agent.facing,
-            anim,
-            frame,
-          });
           texture = new THREE.CanvasTexture(canvas);
           texture.colorSpace = THREE.SRGBColorSpace;
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
           texture.needsUpdate = true;
-          this.charTextures.set(key, texture);
+          this.charTextures.set(cacheKey, texture);
         }
         mat.map = texture;
         mat.needsUpdate = true;
-        entry.lastKey = key;
+        entry.provisional = provisional;
+        entry.lastKey = provisional ? `${key}:tmp` : key;
       }
     }
     for (const [id, entry] of this.sprites) {

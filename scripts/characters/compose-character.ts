@@ -1,10 +1,26 @@
 ﻿import type { CharacterDna } from "./dna";
 import {
+  ensureImage,
+  getCachedImage,
+  isImageMissing,
+} from "./asset-cache";
+import {
+  CHAR_H,
+  CHAR_W,
   IDLE_FRAMES,
+  LAYER_STACK,
   WALK_FRAMES,
+  bodyVariant,
+  facingToDir,
+  fullSpritePath,
+  hairVariant,
+  hasFullSpriteOutfit,
+  layerSpritePath,
   resolveAnim,
   type CharAnim,
+  type LayerSlot,
 } from "./layers-manifest";
+import { drawLayerSlot } from "./procedural-slots";
 
 /** Taille du rendu canvas procédural (fiches staff + floor). */
 export const CHARACTER_SIZE = 96;
@@ -489,6 +505,203 @@ function cacheKey(
   return `${dna.seed}|${dna.outfit}|${dna.hair}|${dna.skin}|${dna.hairColor}|${facing}|${anim}|${frame}|${mode}`;
 }
 
+function drawImageFrame(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  flipX: boolean,
+) {
+  ctx.clearRect(0, 0, CHAR_W, CHAR_H);
+  ctx.imageSmoothingEnabled = false;
+  if (flipX) {
+    ctx.save();
+    ctx.translate(CHAR_W, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, CHAR_W, CHAR_H);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, 0, 0, CHAR_W, CHAR_H);
+  }
+}
+
+function tryComposeFull(
+  dna: CharacterDna,
+  facing: "down" | "left" | "right" | "up",
+  anim: CharAnim,
+  frame: number,
+): HTMLCanvasElement | null {
+  if (!hasFullSpriteOutfit(dna.outfit)) return null;
+  const { dir, flipX } = facingToDir(facing);
+  const url = fullSpritePath(dna.outfit, dir, anim, frame);
+  if (isImageMissing(url)) return null;
+  const img = getCachedImage(url) ?? ensureImage(url);
+  if (!img) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = CHAR_W;
+  canvas.height = CHAR_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  drawImageFrame(ctx, img, flipX);
+  return canvas;
+}
+
+function layerVariantFor(
+  slot: LayerSlot,
+  dna: CharacterDna,
+): string | null {
+  if (slot === "shadow") return "shadow";
+  if (slot === "body" || slot === "head") return bodyVariant(dna.body);
+  if (slot === "outfit") return dna.outfit;
+  if (slot === "hair" || slot === "hair_back") return hairVariant(dna.hair);
+  return null;
+}
+
+function layerTint(slot: LayerSlot, dna: CharacterDna): string | null {
+  if (slot === "body" || slot === "head") return dna.skin;
+  if (slot === "hair" || slot === "hair_back") return dna.hairColor;
+  return null;
+}
+
+function tryComposeLayers(
+  dna: CharacterDna,
+  facing: "down" | "left" | "right" | "up",
+  anim: CharAnim,
+  frame: number,
+): HTMLCanvasElement | null {
+  const { dir, flipX } = facingToDir(facing);
+  const resolved: Array<{
+    img: HTMLImageElement;
+    tint: string | null;
+  }> = [];
+  let hasBody = false;
+  let hasOutfit = false;
+  let hasHead = false;
+
+  for (const slot of LAYER_STACK) {
+    const variant = layerVariantFor(slot, dna);
+    if (!variant) continue;
+    const url = layerSpritePath(slot, variant, dir, anim, frame);
+    if (isImageMissing(url)) {
+      if (slot === "body" || slot === "outfit" || slot === "head") return null;
+      continue;
+    }
+    const img = getCachedImage(url) ?? ensureImage(url);
+    if (!img) {
+      if (slot === "body" || slot === "outfit" || slot === "head") return null;
+      continue;
+    }
+    if (slot === "body") hasBody = true;
+    if (slot === "outfit") hasOutfit = true;
+    if (slot === "head") hasHead = true;
+    resolved.push({ img, tint: layerTint(slot, dna) });
+  }
+
+  if (!hasBody || !hasOutfit || !hasHead) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = CHAR_W;
+  canvas.height = CHAR_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.imageSmoothingEnabled = false;
+
+  for (const layer of resolved) {
+    const tmp = document.createElement("canvas");
+    tmp.width = CHAR_W;
+    tmp.height = CHAR_H;
+    const tctx = tmp.getContext("2d");
+    if (!tctx) continue;
+    tctx.imageSmoothingEnabled = false;
+    tctx.drawImage(layer.img, 0, 0, CHAR_W, CHAR_H);
+    if (layer.tint) {
+      tctx.globalCompositeOperation = "multiply";
+      tctx.fillStyle = layer.tint;
+      tctx.fillRect(0, 0, CHAR_W, CHAR_H);
+      tctx.globalCompositeOperation = "destination-in";
+      tctx.drawImage(layer.img, 0, 0, CHAR_W, CHAR_H);
+      tctx.globalCompositeOperation = "source-over";
+    }
+    if (flipX) {
+      ctx.save();
+      ctx.translate(CHAR_W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(tmp, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.drawImage(tmp, 0, 0);
+    }
+  }
+  return canvas;
+}
+
+function composeProceduralSlots(
+  dna: CharacterDna,
+  facing: "down" | "left" | "right" | "up",
+  anim: CharAnim,
+  frame: number,
+): HTMLCanvasElement {
+  const { dir, flipX } = facingToDir(facing);
+  const canvas = document.createElement("canvas");
+  canvas.width = CHAR_W;
+  canvas.height = CHAR_H;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    return composeProcedural(dna, facing, anim, frame);
+  }
+  ctx.imageSmoothingEnabled = false;
+
+  for (const slot of LAYER_STACK) {
+    if (slot === "accessory") continue;
+    const painted = slot === "outfit" || slot === "shadow";
+    const layer = drawLayerSlot({
+      slot,
+      dir,
+      anim,
+      frame,
+      body: dna.body,
+      hair: dna.hair,
+      outfit: dna.outfit,
+      painted,
+    });
+    if (slot !== "shadow") layer.applyOutline([58, 40, 28]);
+
+    const tmp = document.createElement("canvas");
+    tmp.width = CHAR_W;
+    tmp.height = CHAR_H;
+    const tctx = tmp.getContext("2d");
+    if (!tctx) continue;
+    layer.blitToCanvas(tctx, false);
+
+    const tint = layerTint(slot, dna);
+    if (tint && !painted) {
+      const alpha = document.createElement("canvas");
+      alpha.width = CHAR_W;
+      alpha.height = CHAR_H;
+      const actx = alpha.getContext("2d");
+      if (actx) {
+        layer.blitToCanvas(actx, false);
+        tctx.globalCompositeOperation = "multiply";
+        tctx.fillStyle = tint;
+        tctx.fillRect(0, 0, CHAR_W, CHAR_H);
+        tctx.globalCompositeOperation = "destination-in";
+        tctx.drawImage(alpha, 0, 0);
+        tctx.globalCompositeOperation = "source-over";
+      }
+    }
+
+    if (flipX) {
+      ctx.save();
+      ctx.translate(CHAR_W, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(tmp, 0, 0);
+      ctx.restore();
+    } else {
+      ctx.drawImage(tmp, 0, 0);
+    }
+  }
+  return canvas;
+}
+
 /** Dessine un personnage 96×96 Reliquary (canvas procédural). */
 export function drawCharacter(
   ctx: CanvasRenderingContext2D,
@@ -573,43 +786,99 @@ function composeProcedural(
   return source;
 }
 
-export function composeCharacterCanvas(
+export type ComposeOptions = {
+  facing?: "down" | "left" | "right" | "up";
+  walkFrame?: number;
+  anim?: CharAnim;
+  frame?: number;
+  walking?: boolean;
+  scale?: number;
+};
+
+export type ComposeResult = {
+  canvas: HTMLCanvasElement;
+  /** true = fallback procédural en attendant le PNG */
+  provisional: boolean;
+};
+
+export function composeCharacterDetailed(
   dna: CharacterDna,
-  options?: {
-    facing?: "down" | "left" | "right" | "up";
-    walkFrame?: number;
-    anim?: CharAnim;
-    frame?: number;
-    walking?: boolean;
-    scale?: number;
-  },
-): HTMLCanvasElement {
+  options?: ComposeOptions,
+): ComposeResult {
   const { facing, anim, frame } = normalizePose(options);
   const scale = options?.scale ?? 1;
-  const key = `${cacheKey(dna, facing, anim, frame, "proc")}|${scale}`;
-  const cached = canvasCache.get(key);
-  if (cached) {
-    return cached;
+  const { dir } = facingToDir(facing);
+  const fullUrl = hasFullSpriteOutfit(dna.outfit)
+    ? fullSpritePath(dna.outfit, dir, anim, frame)
+    : null;
+
+  // Priorité : full/ → layers → slots procéduraux
+  const fromFull = tryComposeFull(dna, facing, anim, frame);
+  const fromLayers = fromFull
+    ? null
+    : tryComposeLayers(dna, facing, anim, frame);
+  const pendingFull =
+    fullUrl != null && !fromFull && !isImageMissing(fullUrl);
+  const pendingLayers =
+    !fromFull && !fromLayers && layersPending(dna, facing, anim, frame);
+  const provisional = pendingFull || pendingLayers;
+  const mode = fromFull ? "full" : fromLayers ? "layers" : "slots";
+  const key = `${cacheKey(dna, facing, anim, frame, mode)}|${scale}`;
+
+  if (!provisional) {
+    const cached = canvasCache.get(key);
+    if (cached) return { canvas: cached, provisional: false };
   }
 
-  const source = composeProcedural(dna, facing, anim, frame);
-  if (scale === 1) {
-    canvasCache.set(key, source);
-    return source;
+  const source =
+    fromFull ??
+    fromLayers ??
+    composeProceduralSlots(dna, facing, anim, frame);
+
+  if (scale !== 1) {
+    const out = document.createElement("canvas");
+    out.width = source.width * scale;
+    out.height = source.height * scale;
+    const outCtx = out.getContext("2d");
+    if (!outCtx) {
+      if (!provisional) canvasCache.set(key, source);
+      return { canvas: source, provisional };
+    }
+    outCtx.imageSmoothingEnabled = false;
+    outCtx.drawImage(source, 0, 0, out.width, out.height);
+    if (!provisional) canvasCache.set(key, out);
+    return { canvas: out, provisional };
   }
 
-  const out = document.createElement("canvas");
-  out.width = source.width * scale;
-  out.height = source.height * scale;
-  const outCtx = out.getContext("2d");
-  if (!outCtx) {
-    canvasCache.set(key, source);
-    return source;
+  if (!provisional) canvasCache.set(key, source);
+  return { canvas: source, provisional };
+}
+
+export function composeCharacterCanvas(
+  dna: CharacterDna,
+  options?: ComposeOptions,
+): HTMLCanvasElement {
+  return composeCharacterDetailed(dna, options).canvas;
+}
+
+function layersPending(
+  dna: CharacterDna,
+  facing: "down" | "left" | "right" | "up",
+  anim: CharAnim,
+  frame: number,
+): boolean {
+  const { dir } = facingToDir(facing);
+  for (const slot of ["body", "outfit", "head"] as LayerSlot[]) {
+    const variant = layerVariantFor(slot, dna);
+    if (!variant) return false;
+    const url = layerSpritePath(slot, variant, dir, anim, frame);
+    if (isImageMissing(url)) return false;
+    if (!getCachedImage(url)) {
+      ensureImage(url);
+      return true;
+    }
   }
-  outCtx.imageSmoothingEnabled = false;
-  outCtx.drawImage(source, 0, 0, out.width, out.height);
-  canvasCache.set(key, out);
-  return out;
+  return false;
 }
 
 export function composeCharacterDataUrl(
@@ -633,5 +902,8 @@ export {
   resolveAnim,
   resolveFrame,
   facingToDir,
+  hasFullSpriteOutfit,
+  fullSpritePath,
 } from "./layers-manifest";
 export type { CharAnim, CharDir } from "./layers-manifest";
+export { warmDnaPose, warmDnaPoseAsync } from "./asset-cache";

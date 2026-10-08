@@ -5,7 +5,19 @@ import { inventoryPublicSelect } from "@/services/inventory/types";
 import type { StockPublic } from "@/services/stocks/types";
 import { decrementShelfStock } from "@/services/stocks/stocks-service";
 import { recordSale } from "@/services/treasury/treasury-service";
-import { ensureRestockTask } from "@/services/tasks/tasks-service";
+import { ensureRestockTask, completeTaskById } from "@/services/tasks/tasks-service";
+import { ensureClock } from "@/services/clock/clock-service";
+import {
+  listInboundDeliveries,
+  promoteArrivedDeliveries,
+  receiveOrder,
+} from "@/services/orders/orders-service";
+import {
+  ARCHETYPES,
+  NAMED_VISITORS,
+  WEIGHT_VALUE,
+  anonymousName,
+} from "@/simulation/data/visitors";
 
 import {
   simulationEventSelect,
@@ -18,12 +30,70 @@ import { validateRunSimulationInput } from "./validation";
 
 type TransactionClient = Prisma.TransactionClient;
 
-function pickRandom<T>(items: T[]): T | null {
-  if (items.length === 0) {
-    return null;
-  }
+type WeightedBook = StockPublic & {
+  category_code: string;
+  rarity: string;
+};
 
-  return items[Math.floor(Math.random() * items.length)] ?? null;
+function pickWeighted<T>(items: T[], weight: (item: T) => number): T | null {
+  if (items.length === 0) return null;
+  const total = items.reduce((sum, item) => sum + Math.max(0.01, weight(item)), 0);
+  let roll = Math.random() * total;
+  for (const item of items) {
+    roll -= Math.max(0.01, weight(item));
+    if (roll <= 0) return item;
+  }
+  return items[items.length - 1] ?? null;
+}
+
+function pickVisitorVoice(): { name: string; categories: string[]; rarity: string } {
+  if (Math.random() < 0.25) {
+    const named = pickWeighted(
+      NAMED_VISITORS,
+      (row) => WEIGHT_VALUE[row.simulation_weight],
+    )!;
+    return {
+      name: named.name,
+      categories: named.preferred_categories,
+      rarity: named.rarity_preference,
+    };
+  }
+  const arch = ARCHETYPES[Math.floor(Math.random() * ARCHETYPES.length)]!;
+  return {
+    name: anonymousName(Math.floor(Math.random() * 10_000)),
+    categories: [...arch.categories],
+    rarity: Math.random() < 0.7 ? "common" : "mixed",
+  };
+}
+
+function bookWeight(
+  book: WeightedBook,
+  prefs: { categories: string[]; rarity: string },
+): number {
+  let score = 2;
+  const cat = book.category_code.toUpperCase();
+  for (const pref of prefs.categories) {
+    const p = pref.toLowerCase();
+    if (
+      (cat === "ARC" && p.includes("arcane")) ||
+      (cat === "HIS" && p.includes("hist")) ||
+      (cat === "BOT" && p.includes("botan")) ||
+      (cat === "NEC" && p.includes("nécro"))
+    ) {
+      score += 6;
+      break;
+    }
+  }
+  const rarity = book.rarity.toLowerCase();
+  if (rarity === "legendary" || rarity === "mythic") {
+    score *= prefs.rarity === "rare" ? 0.5 : 0.08;
+  } else if (rarity === "rare") {
+    score += prefs.rarity === "rare" ? 4 : 0;
+  } else if (prefs.rarity === "common") {
+    score += 3;
+  }
+  score += Math.min(3, Math.log2(1 + book.qty_shelf));
+  return score;
 }
 
 async function logSimulationEvent(
@@ -74,7 +144,7 @@ export async function listSimulationEvents(
   });
 }
 
-/** Run a batch simulation for one player. */
+/** Run a batch simulation for one player (Mode 1 enrichi — P1.4). */
 export async function runSimulation(
   userId: number,
   body: unknown = null,
@@ -88,6 +158,7 @@ export async function runSimulation(
     });
 
     const events: SimulationEventPublic[] = [];
+    const clock = await ensureClock(userId, tx);
 
     const shelfInventories = await tx.book_inventory.findMany({
       where: { user_id: userId, qty_shelf: { gt: 0 } },
@@ -104,14 +175,21 @@ export async function runSimulation(
         title: true,
         purchase_price: true,
         is_active: true,
+        rarity: true,
+        category_id: true,
       },
     });
+
+    const categories = await tx.categories.findMany({
+      select: { id: true, code: true },
+    });
+    const codeById = new Map(categories.map((row) => [row.id, row.code]));
 
     const inventoryByBookId = new Map(
       shelfInventories.map((row) => [row.book_id, row]),
     );
 
-    const purchasableBooks: StockPublic[] = [];
+    const purchasableBooks: WeightedBook[] = [];
     for (const book of books) {
       const inventory = inventoryByBookId.get(book.id);
       if (!inventory || inventory.qty_shelf <= 0) continue;
@@ -127,6 +205,8 @@ export async function runSimulation(
         alert_threshold: inventory.alert_threshold,
         first_received_at: inventory.first_received_at,
         updated_at: inventory.updated_at,
+        category_code: codeById.get(book.category_id) ?? "HIS",
+        rarity: book.rarity,
       });
     }
 
@@ -143,10 +223,111 @@ export async function runSimulation(
       );
     } else {
       for (let i = 0; i < input.events_count; i += 1) {
-        const book = pickRandom(purchasableBooks);
-        if (!book) {
-          break;
+        const inbound = await listInboundDeliveries(
+          userId,
+          clock.sim_day,
+          clock.sim_minutes,
+          tx,
+        );
+        const awaitingReceive = inbound.filter((row) => row.has_receive_task);
+        const enRoute = inbound.filter((row) => !row.has_receive_task);
+        const roll = Math.random();
+
+        // ~12 % : livraison fournisseur si commandes en attente (P1.4)
+        if (roll < 0.12 && (enRoute.length > 0 || awaitingReceive.length > 0)) {
+          if (enRoute.length > 0) {
+            const target = enRoute[Math.floor(Math.random() * enRoute.length)]!;
+            const promoted = await promoteArrivedDeliveries(
+              userId,
+              clock.sim_day,
+              clock.sim_minutes,
+              tx,
+              { forceOrderId: target.order_id },
+            );
+            events.push(
+              await logSimulationEvent(
+                run.id,
+                {
+                  type: "SUPPLIER_DELIVERY",
+                  message: `Le convoi de la commande #${target.order_id} arrive au quai.`,
+                  metadata: JSON.stringify({
+                    order_id: target.order_id,
+                    task_id: promoted[0]?.task_id ?? null,
+                  }),
+                },
+                tx,
+              ),
+            );
+          } else {
+            const target =
+              awaitingReceive[Math.floor(Math.random() * awaitingReceive.length)]!;
+            try {
+              await receiveOrder(target.order_id, userId, tx);
+              const task = await tx.tasks.findFirst({
+                where: {
+                  user_id: userId,
+                  type: "RECEIVE_DELIVERY",
+                  order_id: target.order_id,
+                  status: { in: ["pending", "in_progress"] },
+                },
+                select: { id: true },
+              });
+              if (task) {
+                await completeTaskById(userId, task.id, tx);
+              }
+              events.push(
+                await logSimulationEvent(
+                  run.id,
+                  {
+                    type: "SUPPLIER_DELIVERY",
+                    message: `Réception de la commande #${target.order_id} : les exemplaires rejoignent la réserve.`,
+                    metadata: JSON.stringify({ order_id: target.order_id }),
+                  },
+                  tx,
+                ),
+              );
+            } catch (error) {
+              if (error instanceof AppError) {
+                events.push(
+                  await logSimulationEvent(
+                    run.id,
+                    {
+                      type: "UNAVAILABLE_REQUEST",
+                      message: `Réception impossible pour la commande #${target.order_id}.`,
+                    },
+                    tx,
+                  ),
+                );
+                continue;
+              }
+              throw error;
+            }
+          }
+          continue;
         }
+
+        // ~10 % : demande introuvable (lore)
+        if (roll < 0.22 || purchasableBooks.length === 0) {
+          const voice = pickVisitorVoice();
+          events.push(
+            await logSimulationEvent(
+              run.id,
+              {
+                type: "UNAVAILABLE_REQUEST",
+                message: `${voice.name} cherche un ouvrage de ${voice.categories[0] ?? "savoir"} introuvable aujourd'hui.`,
+                metadata: JSON.stringify({ visitor: voice.name }),
+              },
+              tx,
+            ),
+          );
+          continue;
+        }
+
+        const voice = pickVisitorVoice();
+        const book = pickWeighted(purchasableBooks, (row) =>
+          bookWeight(row, voice),
+        );
+        if (!book) break;
 
         try {
           const updated = await decrementShelfStock(userId, book.id, 1, tx);
@@ -156,7 +337,12 @@ export async function runSimulation(
             (candidate) => candidate.id === book.id,
           );
           if (bookIndex >= 0) {
-            purchasableBooks[bookIndex] = updated;
+            purchasableBooks[bookIndex] = {
+              ...purchasableBooks[bookIndex]!,
+              ...updated,
+              category_code: book.category_code,
+              rarity: book.rarity,
+            };
             if (updated.qty_shelf === 0) {
               purchasableBooks.splice(bookIndex, 1);
             }
@@ -166,9 +352,10 @@ export async function runSimulation(
             run.id,
             {
               type: "CUSTOMER_PURCHASE",
-              message: `Un client a acheté un "${updated.title}" pour ${unitSalePrice.toFixed(2)} florins (stock restant : ${updated.qty_shelf}).`,
+              message: `${voice.name} acquiert « ${updated.title} » pour ${unitSalePrice.toFixed(2)} florins (rayon : ${updated.qty_shelf}).`,
               book_id: updated.id,
               metadata: JSON.stringify({
+                visitor: voice.name,
                 qty_shelf_after: updated.qty_shelf,
                 unit_sale_price: unitSalePrice.toFixed(2),
                 qty: 1,
@@ -189,9 +376,27 @@ export async function runSimulation(
             tx,
           );
 
-          await ensureRestockTask(userId, updated.id, tx);
-
+          const restock = await ensureRestockTask(userId, updated.id, tx);
           events.push(event);
+
+          if (updated.qty_shelf === 0) {
+            events.push(
+              await logSimulationEvent(
+                run.id,
+                {
+                  type: "STOCKOUT",
+                  message: restock
+                    ? `Rupture rayon : « ${updated.title} » — réassort demandé.`
+                    : `Rupture rayon : « ${updated.title} » — réserve vide.`,
+                  book_id: updated.id,
+                  metadata: JSON.stringify({
+                    restock_task_id: restock?.id ?? null,
+                  }),
+                },
+                tx,
+              ),
+            );
+          }
         } catch (error) {
           if (error instanceof AppError && error.code === "BUSINESS_RULE") {
             events.push(
@@ -199,7 +404,7 @@ export async function runSimulation(
                 run.id,
                 {
                   type: "UNAVAILABLE_REQUEST",
-                  message: `Achat impossible pour "${book.title}" (${error.message}).`,
+                  message: `${voice.name} : achat impossible pour « ${book.title} » (${error.message}).`,
                   book_id: book.id,
                 },
                 tx,

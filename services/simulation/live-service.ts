@@ -2,7 +2,11 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/lib/api/route-errors";
 import { decrementShelfStock, transferToShelf } from "@/services/stocks/stocks-service";
 import { recordSale, recordDailyWages } from "@/services/treasury/treasury-service";
-import { receiveOrder } from "@/services/orders/orders-service";
+import {
+  listInboundDeliveries,
+  promoteArrivedDeliveries,
+  receiveOrder,
+} from "@/services/orders/orders-service";
 import { ensureClock, saveClockSnapshot } from "@/services/clock/clock-service";
 import {
   completeTaskById,
@@ -11,6 +15,7 @@ import {
 } from "@/services/tasks/tasks-service";
 import {
   applyMoraleDelta,
+  applyTaskXp,
   ensureStarterStaff,
   listEmployees,
 } from "@/services/staff/staff-service";
@@ -25,6 +30,8 @@ type LiveCommit = {
   task_id?: number | null;
   order_id?: number | null;
   visitor_id?: string;
+  employee_id?: number;
+  xp_kind?: "checkout" | "advise" | "restock" | "receive";
   event_type?: string;
   message?: string;
 };
@@ -41,24 +48,70 @@ type LiveCommitBody = {
   snapshot?: unknown;
 };
 
+async function latestUnpaidWages(userId: number): Promise<boolean> {
+  const run = await prisma.simulation_runs.findFirst({
+    where: { user_id: userId },
+    orderBy: { id: "desc" },
+    select: { id: true },
+  });
+  if (!run) return false;
+  const event = await prisma.simulation_events.findFirst({
+    where: { simulation_run_id: run.id, type: "DAY_CLOSED" },
+    orderBy: { id: "desc" },
+    select: { message: true },
+  });
+  return Boolean(event?.message?.includes("paie partielle"));
+}
+
 export async function getSimulationWorld(userId: number) {
   await ensureLocations();
   await ensureStarterStaff(userId);
-  const [clock, employees, tasks, locations, inventories] = await Promise.all([
-    ensureClock(userId),
-    listEmployees(userId),
-    listTasks(userId),
-    listLocations(),
-    prisma.book_inventory.findMany({
-      where: { user_id: userId },
-      select: {
-        book_id: true,
-        qty_shelf: true,
-        qty_reserve: true,
-        sale_price: true,
-      },
-    }),
-  ]);
+  const clock = await ensureClock(userId);
+
+  // Promouvoir les convois dont l’ETA est atteinte (P1.1)
+  await prisma.$transaction(async (tx) => {
+    const promoted = await promoteArrivedDeliveries(
+      userId,
+      clock.sim_day,
+      clock.sim_minutes,
+      tx,
+    );
+    if (promoted.length === 0) return;
+    const runOpen = await tx.simulation_runs.findFirst({
+      where: { user_id: userId, ended_at: null },
+      orderBy: { id: "desc" },
+      select: { id: true },
+    });
+    if (!runOpen) return;
+    for (const row of promoted) {
+      await tx.simulation_events.create({
+        data: {
+          simulation_run_id: runOpen.id,
+          type: "SUPPLIER_DELIVERY",
+          message: `Un convoi pour la commande #${row.order_id} arrive au quai.`,
+          metadata: JSON.stringify({ order_id: row.order_id, task_id: row.task_id }),
+        },
+      });
+    }
+  });
+
+  const [employees, tasks, locations, inventories, inbound, unpaid_wages] =
+    await Promise.all([
+      listEmployees(userId),
+      listTasks(userId),
+      listLocations(),
+      prisma.book_inventory.findMany({
+        where: { user_id: userId },
+        select: {
+          book_id: true,
+          qty_shelf: true,
+          qty_reserve: true,
+          sale_price: true,
+        },
+      }),
+      listInboundDeliveries(userId, clock.sim_day, clock.sim_minutes),
+      latestUnpaidWages(userId),
+    ]);
 
   const books =
     inventories.length === 0
@@ -90,6 +143,8 @@ export async function getSimulationWorld(userId: number) {
     employees,
     tasks,
     locations,
+    inbound,
+    unpaid_wages,
     books: books.map((book) => {
       const inventory = inventoryByBook.get(book.id);
       return {
@@ -131,8 +186,58 @@ export async function applyLiveCommits(userId: number, body: unknown) {
     const events = [];
     let unpaidWages = false;
 
+    const clockHint = input.clock;
+    if (clockHint) {
+      const promoted = await promoteArrivedDeliveries(
+        userId,
+        clockHint.sim_day,
+        clockHint.sim_minutes,
+        tx,
+      );
+      for (const row of promoted) {
+        const event = await tx.simulation_events.create({
+          data: {
+            simulation_run_id: runId,
+            type: "SUPPLIER_DELIVERY",
+            message: `Un convoi pour la commande #${row.order_id} arrive au quai.`,
+            metadata: JSON.stringify({
+              order_id: row.order_id,
+              task_id: row.task_id,
+            }),
+          },
+          select: simulationEventSelect,
+        });
+        events.push(event);
+      }
+    }
+
     for (const commit of commits.slice(0, 40)) {
       try {
+      if (commit.type === "delivery_arrive" && commit.order_id) {
+        const clock = clockHint ?? (await ensureClock(userId, tx));
+        const promoted = await promoteArrivedDeliveries(
+          userId,
+          clock.sim_day,
+          clock.sim_minutes,
+          tx,
+          { forceOrderId: commit.order_id },
+        );
+        for (const row of promoted) {
+          const event = await tx.simulation_events.create({
+            data: {
+              simulation_run_id: runId,
+              type: "SUPPLIER_DELIVERY",
+              message:
+                commit.message ??
+                `Un convoi pour la commande #${row.order_id} arrive au quai.`,
+              metadata: JSON.stringify({ order_id: row.order_id }),
+            },
+            select: simulationEventSelect,
+          });
+          events.push(event);
+        }
+      }
+
       if (commit.type === "sale" && commit.book_id) {
         const qty = commit.qty && commit.qty > 0 ? commit.qty : 1;
         const updated = await decrementShelfStock(userId, commit.book_id, qty, tx);
@@ -161,6 +266,26 @@ export async function applyLiveCommits(userId: number, body: unknown) {
         );
         await ensureRestockTask(userId, commit.book_id, tx);
         events.push(event);
+
+        if (updated.qty_shelf === 0) {
+          const restock = await ensureRestockTask(userId, commit.book_id, tx);
+          const stockout = await tx.simulation_events.create({
+            data: {
+              simulation_run_id: runId,
+              type: "STOCKOUT",
+              message: restock
+                ? `Rupture rayon : « ${updated.title} » — tâche de remise en rayon ouverte.`
+                : `Rupture rayon : « ${updated.title} » — réserve vide, commande fournisseur nécessaire.`,
+              book_id: commit.book_id,
+              metadata: JSON.stringify({
+                qty_reserve: updated.qty_reserve,
+                restock_task_id: restock?.id ?? null,
+              }),
+            },
+            select: simulationEventSelect,
+          });
+          events.push(stockout);
+        }
       }
 
       if (commit.type === "restock" && commit.book_id && commit.qty && commit.qty > 0) {
@@ -189,6 +314,20 @@ export async function applyLiveCommits(userId: number, body: unknown) {
         if (commit.task_id) {
           await completeTaskById(userId, commit.task_id, tx);
         }
+      }
+
+      if (commit.type === "advise") {
+        if (commit.task_id && commit.task_id > 0) {
+          await completeTaskById(userId, commit.task_id, tx);
+        }
+      }
+
+      if (
+        commit.type === "staff_xp" &&
+        commit.employee_id &&
+        commit.xp_kind
+      ) {
+        await applyTaskXp(userId, commit.employee_id, commit.xp_kind, tx);
       }
 
       if (commit.type === "event" && commit.message) {

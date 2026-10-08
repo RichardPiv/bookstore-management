@@ -41,8 +41,18 @@ export async function PATCH(request: Request, context: RouteContext) {
     if (!body || typeof body !== "object") {
       throw new AppError("VALIDATION_ERROR", "Invalid request body.", 400);
     }
-    const raw = body as { role?: unknown; status?: unknown };
-    const patch: { role?: (typeof EMPLOYEE_ROLES)[number]; status?: "idle" | "paused" } = {};
+    const raw = body as {
+      role?: unknown;
+      status?: unknown;
+      specialty_shelf?: unknown;
+      counter_focus?: unknown;
+    };
+    const patch: {
+      role?: (typeof EMPLOYEE_ROLES)[number];
+      status?: "idle" | "paused";
+      specialty_shelf?: string | null;
+      counter_focus?: boolean;
+    } = {};
     if (raw.role !== undefined) {
       if (!(EMPLOYEE_ROLES as readonly string[]).includes(String(raw.role))) {
         throw new AppError("VALIDATION_ERROR", "Invalid role.", 400);
@@ -54,6 +64,21 @@ export async function PATCH(request: Request, context: RouteContext) {
         throw new AppError("VALIDATION_ERROR", "Invalid status.", 400);
       }
       patch.status = raw.status;
+    }
+    if (raw.specialty_shelf !== undefined) {
+      if (raw.specialty_shelf === null) {
+        patch.specialty_shelf = null;
+      } else if (typeof raw.specialty_shelf === "string") {
+        patch.specialty_shelf = raw.specialty_shelf;
+      } else {
+        throw new AppError("VALIDATION_ERROR", "Invalid specialty_shelf.", 400);
+      }
+    }
+    if (raw.counter_focus !== undefined) {
+      if (typeof raw.counter_focus !== "boolean") {
+        throw new AppError("VALIDATION_ERROR", "Invalid counter_focus.", 400);
+      }
+      patch.counter_focus = raw.counter_focus;
     }
     const employee = await patchEmployee(session.id, id, patch);
     return jsonData(employee);

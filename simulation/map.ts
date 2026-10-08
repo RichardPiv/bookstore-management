@@ -126,6 +126,8 @@ function buildShelfFurniture(): GridRect[] {
 export const LOCATION_DEFS: LocationDef[] = [
   { code: "entrance", name: "Entrée", kind: "entrance", x: MID_X, y: 29 },
   { code: "counter", name: "Comptoir", kind: "counter", x: 42, y: 30 },
+  /** Coin ouest — tables de lecture (P2.4 / L4). */
+  { code: "reading_room", name: "Salle de lecture", kind: "room", x: 8, y: 27 },
   ...buildShelfLocations(),
   { code: "reserve", name: "Réserve", kind: "reserve", x: 78, y: 7 },
   { code: "dock", name: "Quai des Convoyeurs", kind: "dock", x: 74, y: 30 },
@@ -228,7 +230,7 @@ function annexWallShelves(): GridRect[] {
 export const FURNITURE: GridRect[] = [
   ...buildShelfFurniture(),
   ...annexWallShelves(),
-  /** Horizontal — remontés pour laisser 3 cases au sud (stand staff). */
+  /** Caisse principale — près de l’entrée / centre-droit (D83). */
   { code: "counter", x: 39, y: 25, w: 8, h: 3 },
   /** Quai : horizontal, bas de l’annexe. */
   { code: "dock", x: 69, y: 25, w: 12, h: 3 },
@@ -410,7 +412,10 @@ export function staffStand(code: string): { x: number; y: number } {
   return rectFront(rect);
 }
 
-export function queueStand(index: number): { x: number; y: number } {
+export function queueStand(
+  index: number,
+  _counterCode: "counter" | "counter_b" = "counter",
+): { x: number; y: number } {
   const spots = [
     { x: 42, y: 23 },
     { x: 43, y: 23 },

@@ -53,6 +53,8 @@ export type Order = {
   order_status: OrderStatus | null;
   delivery: OrderDelivery | null;
   user: OrderUser | null;
+  convoy_eta_label?: string | null;
+  convoy_arrived?: boolean;
 };
 
 export type LoadStatus = "loading" | "ready" | "error";

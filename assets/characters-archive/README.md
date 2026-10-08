@@ -1,13 +1,11 @@
-# Archive sprites personnages (hors runtime)
+# Archive sprites personnages
 
-Sprites générés (hero set `full/` + calques `layers/`) **isolés hors de `public/`**.
-
-Le jeu utilise uniquement le rendu **canvas procédural** (`scripts/characters/compose-character.ts`).  
-Ces PNG ne sont plus servis ni préchargés — aucun 404 réseau.
+Copie source du hero set. **Runtime actif** : `public/img/characters/full/`
+(rechargé via `asset-cache` + `compose-character`).
 
 ## Contenu
 
-- `full/` — sprites 64×96 pré-composés (`{outfit}_{dir}_{anim}_{frame}.png`)
-- `layers/` — calques paper-doll (si présents)
+- `full/` — sprites 64×96 (`{outfit}_{dir}_{anim}_{frame}.png`)
+- `layers/` — scaffold / README paper-doll
 
-Pour réactiver un pipeline image plus tard, recopier vers `public/img/characters/` et reconnecter le chargeur.
+Si `public/img/characters/full/` manque, recopier depuis ici.

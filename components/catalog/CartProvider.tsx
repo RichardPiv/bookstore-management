@@ -10,6 +10,7 @@ import {
 import { Cart, CartContextType, CartItem } from "./catalog-data";
 import { loadCartFromStorage, saveCartToStorage } from "./cart-storage";
 import { useTreasuryBalanceOptional } from "@/components/treasury/TreasuryBalanceProvider";
+import { useSimulationRuntimeOptional } from "@/components/simulation-runtime/SimulationRuntimeProvider";
 
 const EMPTY_CART: Cart = { items: [] };
 
@@ -141,6 +142,7 @@ export default function CartProvider({
 
   const [isCartOpen, setIsCartOpen] = useState(false);
   const treasuryBalance = useTreasuryBalanceOptional();
+  const simulationRuntime = useSimulationRuntimeOptional();
 
   function openCart() {
     setIsCartOpen(true);
@@ -197,6 +199,7 @@ export default function CartProvider({
       dispatch({ type: "CLEAR_CART" });
       closeCart();
       await treasuryBalance?.refreshTreasury();
+      await simulationRuntime?.refreshWorld();
     }
 
     return success;

@@ -34,6 +34,9 @@ export type OrderWithDetails = OrderPublic & {
   order_status: OrderStatusPublic | null;
   delivery: DeliveryWithStatus | null;
   user: Pick<UserPublic, "id" | "username"> | null;
+  /** ETA simulée décodée (P1.1), null si reçue / absente. */
+  convoy_eta_label: string | null;
+  convoy_arrived: boolean;
 };
 
 export type CreateOrderLineInput = {

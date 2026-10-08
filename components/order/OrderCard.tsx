@@ -68,6 +68,11 @@ export default function OrderCard({
 
         <p className="mb-4 line-clamp-2 font-body text-xs text-on-surface-variant">
           {supplierName} — {formatOrderDate(order.order_datetime)}
+          {pending && order.convoy_eta_label
+            ? order.convoy_arrived
+              ? " · Au quai"
+              : ` · ETA ${order.convoy_eta_label}`
+            : ""}
         </p>
 
         <span className="mt-auto inline-flex items-center gap-1 font-label text-[10px] tracking-widest text-primary uppercase">
@@ -118,6 +123,11 @@ export default function OrderCard({
           <p className="font-body text-sm text-on-surface-variant">
             Passée le {formatOrderDate(order.order_datetime)}
             {order.user?.username ? ` par ${order.user.username}` : ""}
+            {pending && order.convoy_eta_label
+              ? order.convoy_arrived
+                ? " · Convoi au quai"
+                : ` · ETA ${order.convoy_eta_label}`
+              : ""}
           </p>
         </div>
 

@@ -11,16 +11,43 @@ import {
   formatHudClock,
   useSimulationRuntime,
 } from "@/components/simulation-runtime/SimulationRuntimeProvider";
-import type { RenderAgent } from "@/simulation/types";
+import { getOrCreateEngine } from "@/components/simulation-runtime/runtime-store";
+import type { HudAlert, RenderAgent } from "@/simulation/types";
 import { cn } from "@/lib/utils";
 
 const SPEEDS = [1, 2, 5] as const;
+
+function alertTone(severity: HudAlert["severity"]) {
+  if (severity === "urgent") return "border-error/50 text-error";
+  if (severity === "warn") return "border-burnished-gold/50 text-burnished-gold";
+  return "border-outline-variant/40 text-on-surface-variant";
+}
 
 export default function SimulationLiveView() {
   const { hud, setPaused, setSpeed, ready } = useSimulationRuntime();
   const [journalOpen, setJournalOpen] = useState(true);
   const [archivesOpen, setArchivesOpen] = useState(false);
   const [selected, setSelected] = useState<RenderAgent | null>(null);
+
+  const handleAlert = (alert: HudAlert) => {
+    if (alert.kind === "catch_up") {
+      getOrCreateEngine().clearCatchUpBanner();
+      return;
+    }
+    if (alert.kind === "unpaid_wages") {
+      window.location.href = "/treasury";
+      return;
+    }
+    if (hud.paused) setPaused(false);
+    if (
+      alert.kind === "long_queue" ||
+      alert.kind === "delivery_waiting" ||
+      alert.kind === "empty_shelf" ||
+      alert.kind === "inbound_convoy"
+    ) {
+      setJournalOpen(true);
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -32,6 +59,11 @@ export default function SimulationLiveView() {
           <h2 className="font-headline text-2xl tracking-widest text-ethereal-glow uppercase">
             {ready ? formatHudClock(hud) : "Calage de l'horloge…"}
           </h2>
+          {hud.day_event ? (
+            <p className="mt-0.5 font-body text-xs text-burnished-gold/80">
+              {hud.day_event}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -84,10 +116,33 @@ export default function SimulationLiveView() {
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-0 min-w-0 flex-1 bg-ink-black">
           <FloorView onSelect={setSelected} />
-          <div className="pointer-events-none absolute bottom-4 left-4 border border-burnished-gold/30 bg-surface/80 px-3 py-2">
-            <p className="font-label text-[9px] tracking-widest text-burnished-gold uppercase">
-              {hud.visitor_count} visiteurs · file {hud.queue_length} · staff occupé {hud.staff_busy}
-            </p>
+          <div className="pointer-events-none absolute bottom-4 left-4 flex max-w-sm flex-col gap-2">
+            <div className="border border-burnished-gold/30 bg-surface/80 px-3 py-2">
+              <p className="font-label text-[9px] tracking-widest text-burnished-gold uppercase">
+                {hud.visitor_count} visiteurs · file {hud.queue_length} · staff
+                occupé {hud.staff_busy}
+                {hud.advise_pending > 0
+                  ? ` · conseils ${hud.advise_pending}`
+                  : ""}
+              </p>
+            </div>
+            {hud.alerts?.length ? (
+              <div className="pointer-events-auto flex flex-col gap-1.5">
+                {hud.alerts.map((alert) => (
+                  <button
+                    key={alert.id}
+                    type="button"
+                    onClick={() => handleAlert(alert)}
+                    className={cn(
+                      "border bg-surface/90 px-3 py-2 text-left font-body text-xs transition hover:bg-surface",
+                      alertTone(alert.severity),
+                    )}
+                  >
+                    {alert.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 

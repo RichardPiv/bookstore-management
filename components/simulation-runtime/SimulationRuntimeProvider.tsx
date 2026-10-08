@@ -12,7 +12,13 @@ import {
 } from "react";
 
 import { formatSimClock, TICK_MS, type HudState } from "@/simulation/types";
-import type { EngineSnapshot, WorldBook, WorldEmployee, WorldTask } from "@/simulation/types";
+import type {
+  EngineSnapshot,
+  WorldBook,
+  WorldEmployee,
+  WorldInbound,
+  WorldTask,
+} from "@/simulation/types";
 import { useTreasuryBalanceOptional } from "@/components/treasury/TreasuryBalanceProvider";
 
 import {
@@ -33,6 +39,8 @@ type WorldResponse = {
   employees: WorldEmployee[];
   tasks: WorldTask[];
   books: WorldBook[];
+  inbound?: WorldInbound[];
+  unpaid_wages?: boolean;
 };
 
 type SimulationRuntimeValue = {
@@ -58,6 +66,10 @@ const emptyHud: HudState = {
   queue_length: 0,
   staff_busy: 0,
   last_event: null,
+  alerts: [],
+  advise_pending: 0,
+  unpaid_wages: false,
+  day_event: null,
 };
 
 export function SimulationRuntimeProvider({ children }: { children: ReactNode }) {
@@ -73,6 +85,8 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
   const treasury = useTreasuryBalanceOptional();
   const lastFlush = useRef(0);
   const lastHud = useRef(0);
+  const hiddenAt = useRef<number | null>(null);
+  const wasRunningWhenHidden = useRef(false);
 
   const pushHud = useCallback((next: HudState) => {
     setHud(next);
@@ -95,8 +109,12 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
       books: world.books,
       tasks: world.tasks,
       employees: world.employees,
+      inbound: world.inbound ?? [],
+      unpaid_wages: world.unpaid_wages ?? false,
     });
     engine.syncStaffFromWorld(world.employees);
+    engine.applyInbound(world.inbound ?? []);
+    engine.setUnpaidWages(world.unpaid_wages ?? false);
     engine.simDay = world.clock.sim_day;
     engine.simMinutes = world.clock.sim_minutes;
     engine.speed = world.clock.speed || 1;
@@ -130,6 +148,12 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
         body: JSON.stringify(payload),
       });
       if (response.ok) {
+        const commitBody = await response.json().catch(() => null);
+        if (commitBody?.data?.unpaid_wages === true) {
+          engine.setUnpaidWages(true);
+        } else if (pending.closed_day && commitBody?.data?.unpaid_wages === false) {
+          engine.setUnpaidWages(false);
+        }
         await treasury?.refreshTreasury();
         const worldRes = await fetch("/api/simulation/world");
         const worldBody = await worldRes.json();
@@ -138,12 +162,15 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
           engine.applyCatalog(world.books);
           engine.applyTasks(world.tasks);
           engine.syncStaffFromWorld(world.employees);
+          engine.applyInbound(world.inbound ?? []);
+          engine.setUnpaidWages(world.unpaid_wages ?? engine.unpaidWages);
+          pushHud(engine.getHud());
         }
       }
     } catch {
       /* keep local state */
     }
-  }, [treasury]);
+  }, [pushHud, treasury]);
 
   const persistSnapshot = useCallback(async () => {
     if (!leaderRef.current) return;
@@ -191,6 +218,9 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
 
     const tick = window.setInterval(() => {
       const engine = getOrCreateEngine();
+      if (document.visibilityState === "hidden") {
+        return;
+      }
       if (leaderRef.current) {
         const result = engine.tick(TICK_MS);
         if (result.commits.length > 0 || result.closed_day) {
@@ -228,8 +258,44 @@ export function SimulationRuntimeProvider({ children }: { children: ReactNode })
 
     const onHide = () => {
       if (document.visibilityState === "hidden") {
+        const engine = getOrCreateEngine();
+        wasRunningWhenHidden.current = !engine.paused;
+        hiddenAt.current = Date.now();
         void flush(true);
+        return;
       }
+
+      // Visible de nouveau : rattrapage plafonné si l’horloge tournait (P0.5 / L5)
+      if (
+        document.visibilityState === "visible" &&
+        hiddenAt.current != null &&
+        wasRunningWhenHidden.current &&
+        leaderRef.current
+      ) {
+        const engine = getOrCreateEngine();
+        if (!engine.paused) {
+          const elapsedMs = Date.now() - hiddenAt.current;
+          const simMinutes = (elapsedMs / 1000) * engine.speed;
+          if (simMinutes >= 0.5) {
+            const result = engine.catchUp(simMinutes);
+            if (result.commits.length > 0 || result.closed_day) {
+              enqueueCommits(result.commits, result.closed_day);
+              for (const commit of result.commits) {
+                if (commit.type === "sale" && commit.book_id) {
+                  engine.noteSaleApplied(commit.book_id);
+                }
+                if (commit.type === "restock" && commit.book_id && commit.qty) {
+                  engine.noteRestockApplied(commit.book_id, commit.qty);
+                }
+              }
+            }
+            pushHud(engine.getHud());
+            void flush(true);
+          }
+        }
+      }
+      hiddenAt.current = null;
+      wasRunningWhenHidden.current = false;
     };
     const onUnload = () => {
       const engine = getOrCreateEngine();

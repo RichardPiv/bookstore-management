@@ -1,141 +1,83 @@
-import { generateDna, parseDna, type CharacterDna } from "@/scripts/characters/dna";
+import { parseDna } from "@/scripts/characters/dna";
 
 import {
-  anonymousName,
-  ARCHETYPES,
-  NAMED_VISITORS,
-  WEIGHT_VALUE,
-} from "./data/visitors";
+  bookUtility,
+  createVisitorAgent,
+  pickBookForVisitor,
+  pickClientInterest,
+  preferredCashierId,
+  reliabilityOk,
+  shelfForBook,
+  specialtyMatchesShelf,
+  specialtyMatchesVisitor,
+  toStaffAgent,
+  workPace,
+  moraleFatigueFactor,
+} from "./agents";
+import { runCatchUp } from "./clock";
 import {
-  approachPoint,
-  categoryCodeToShelf,
-  categoryToShelf,
+  dayEventHudLabel,
+  pickDayEvent,
+  type DayEvent,
+} from "./data/day-events";
+import {
+  facingFromDelta,
+  facingTowardNearest,
+  staffPostFacing,
+} from "./facing";
+import { buildHudAlerts } from "./hud";
+import { homeForStaff, loc, locClient, locStaff } from "./locations";
+import {
   isClientWalkable,
   isWalkable,
   queueStand,
-  randomHallPoint,
-  shelfCodes,
-  spawnPoint,
-  staffStand,
 } from "./map";
-import { shelfLocationFromCategoryCode } from "./categories";
 import {
   clampClientWalkable,
-  clampWalkable,
   findClientPath,
   findPath,
 } from "./pathfinding";
+import { mulberry32 } from "./rng";
+import {
+  restoreStaffFromSnapshot,
+  restoreVisitorsFromSnapshot,
+} from "./snapshot";
+import {
+  adviseSuccessChance,
+  adviseWorkMinutes,
+  createAdviseRuntimeTask,
+  logisticsWorkMinutes,
+  pickLogisticsTask,
+} from "./tasks";
 import {
   CELLS_PER_SIM_MINUTE,
   CLOSE_MINUTES,
-  defaultStats,
+  applyXpGains,
   MAX_AGENTS,
   MAX_VISITORS,
   OPEN_MINUTES,
   parseStats,
   spawnRate,
-  type EmployeeRole,
   type EngineSnapshot,
   type HudState,
   type RenderAgent,
   type StaffAgent,
+  type StaffXpKind,
   type TickCommit,
   type TickResult,
   type VisitorAgent,
   type WorldBook,
   type WorldEmployee,
+  type WorldInbound,
   type WorldTask,
 } from "./types";
-
-function mulberry32(seed: number) {
-  let a = seed;
-  return () => {
-    a += 0x6d2b79f5;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function loc(code: string) {
-  return clampWalkable(approachPoint(code));
-}
-
-function locClient(code: string) {
-  return clampClientWalkable(approachPoint(code));
-}
-
-function locStaff(code: string) {
-  return clampWalkable(staffStand(code));
-}
-
-function facingFromDelta(
-  dx: number,
-  dy: number,
-): RenderAgent["facing"] {
-  if (dx === 0 && dy === 0) return "down";
-  if (Math.abs(dx) > Math.abs(dy)) {
-    return dx < 0 ? "left" : "right";
-  }
-  return dy < 0 ? "up" : "down";
-}
-
-/** Regard vers le personnage le plus proche (clients à l’arrêt). */
-function facingTowardNearest(
-  x: number,
-  y: number,
-  others: Array<{ x: number; y: number }>,
-  fallback: RenderAgent["facing"] = "down",
-): RenderAgent["facing"] {
-  let bestDx = 0;
-  let bestDy = 0;
-  let bestDist = 10;
-  for (const other of others) {
-    const dx = other.x - x;
-    const dy = other.y - y;
-    const dist = Math.abs(dx) + Math.abs(dy);
-    if (dist <= 0 || dist > bestDist) continue;
-    bestDist = dist;
-    bestDx = dx;
-    bestDy = dy;
-  }
-  if (bestDist >= 10) return fallback;
-  return facingFromDelta(bestDx, bestDy);
-}
-
-/** Regard idle du staff selon le poste (vers la salle, pas vers la caméra). */
-function staffPostFacing(
-  role: EmployeeRole,
-  x: number,
-): RenderAgent["facing"] {
-  if (role === "clerk") {
-    // Comptoir : face à la salle (nord)
-    return "up";
-  }
-  if (role === "receiver") {
-    // Quai / entrée annexe : face à la salle (ouest, vers le mitoyen)
-    return "left";
-  }
-  // Stocker : devant la réserve → vers la salle ; fond → garde le regard
-  if (x < 70) return "left";
-  return "right";
-}
-
-function pickWeighted<T>(items: T[], weight: (item: T) => number, rng: () => number): T {
-  const total = items.reduce((sum, item) => sum + weight(item), 0);
-  let roll = rng() * total;
-  for (const item of items) {
-    roll -= weight(item);
-    if (roll <= 0) return item;
-  }
-  return items[items.length - 1]!;
-}
 
 export type EngineWorld = {
   books: WorldBook[];
   tasks: WorldTask[];
   employees: WorldEmployee[];
+  inbound?: WorldInbound[];
+  unpaid_wages?: boolean;
 };
 
 export class SimulationEngine {
@@ -147,23 +89,50 @@ export class SimulationEngine {
   staff: StaffAgent[] = [];
   queue: string[] = [];
   lastEvent: string | null = null;
+  unpaidWages = false;
+  catchUpBanner: string | null = null;
+  dayEvent: DayEvent = pickDayEvent(1);
   private books: WorldBook[] = [];
   private tasks: WorldTask[] = [];
+  private inbound: WorldInbound[] = [];
+  private notifiedArrivals = new Set<number>();
+  /** taskId (souvent négatif) → visitorId pour ADVISE_CUSTOMER runtime. */
+  private adviseByTask = new Map<number, string>();
   private rngFn = mulberry32(1);
   private rngState = 1;
   private visitorSeq = 0;
+  private runtimeTaskSeq = 0;
   private cellCarry = 0;
+  private dayEventAnnouncedFor = 0;
 
   hydrateWorld(world: EngineWorld) {
     this.books = world.books.map((book) => ({ ...book }));
     this.tasks = world.tasks
       .filter((task) => task.status === "pending" || task.status === "in_progress")
       .map((task) => ({ ...task }));
+    this.inbound = (world.inbound ?? []).map((row) => ({ ...row }));
+    if (typeof world.unpaid_wages === "boolean") {
+      this.unpaidWages = world.unpaid_wages;
+    }
+    this.ensureDayEvent(false);
     if (this.staff.length === 0) {
       this.staff = world.employees
         .filter((row) => row.status !== "dismissed")
-        .map((row) => this.toStaffAgent(row));
+        .map((row) => toStaffAgent(row));
     }
+  }
+
+  applyInbound(inbound: WorldInbound[]) {
+    this.inbound = inbound.map((row) => ({ ...row }));
+    for (const row of inbound) {
+      if (row.arrived || row.has_receive_task) {
+        this.notifiedArrivals.add(row.order_id);
+      }
+    }
+  }
+
+  setUnpaidWages(flag: boolean) {
+    this.unpaidWages = flag;
   }
 
   applyCatalog(books: WorldBook[]) {
@@ -192,14 +161,16 @@ export class SimulationEngine {
     this.staff = active.map((row) => {
       const existing = byId.get(row.id);
       if (existing) {
+        const fatigue = existing.stats.fatigue;
         existing.name = row.name;
         existing.role = row.role;
         existing.stats = parseStats(row.stats_json);
+        existing.stats.fatigue = fatigue;
         existing.dna = parseDna(row.appearance_json);
-        existing.home = homeForRole(row.role);
+        existing.home = homeForStaff(row.role, existing.stats.counter_focus);
         return existing;
       }
-      return this.toStaffAgent(row);
+      return toStaffAgent(row);
     });
   }
 
@@ -209,35 +180,13 @@ export class SimulationEngine {
     this.simMinutes = snapshot.sim_minutes;
     this.speed = snapshot.speed;
     this.paused = snapshot.paused;
-    this.visitors = snapshot.visitors.map((visitor) => {
-      const pos = clampClientWalkable({
-        x: Math.round(visitor.x),
-        y: Math.round(visitor.y),
-      });
-      const visits =
-        typeof (visitor as VisitorAgent).visits_left === "number"
-          ? (visitor as VisitorAgent).visits_left
-          : 2 + Math.floor(Math.random() * 3);
-      let state = visitor.state;
-      if (state === "browse") state = "roam";
-      return {
-        ...visitor,
-        state,
-        x: pos.x,
-        y: pos.y,
-        visits_left: visits,
-        path: [],
-      };
-    });
-    this.staff = snapshot.staff.map((agent) => {
-      const pos = clampWalkable({
-        x: Math.round(agent.x),
-        y: Math.round(agent.y),
-      });
-      return { ...agent, x: pos.x, y: pos.y };
-    });
+    const restoredVisitors = restoreVisitorsFromSnapshot(snapshot);
+    this.visitors = restoredVisitors.visitors;
+    this.adviseByTask = restoredVisitors.adviseByTask;
+    this.staff = restoreStaffFromSnapshot(snapshot);
     this.queue = snapshot.queue;
     this.setRng(snapshot.rng);
+    this.ensureDayEvent(false);
   }
 
   getSnapshot(): EngineSnapshot {
@@ -263,6 +212,21 @@ export class SimulationEngine {
   }
 
   getHud(): HudState {
+    const alerts = buildHudAlerts({
+      catchUpBanner: this.catchUpBanner,
+      queueLength: this.queue.length,
+      books: this.books,
+      tasks: this.tasks,
+      staff: this.staff,
+      inbound: this.inbound,
+      unpaidWages: this.unpaidWages,
+      dayEvent: this.dayEvent,
+    });
+    const advisePending = this.tasks.filter(
+      (task) =>
+        task.type === "ADVISE_CUSTOMER" &&
+        (task.status === "pending" || task.status === "in_progress"),
+    ).length;
     return {
       sim_day: this.simDay,
       sim_minutes: this.simMinutes,
@@ -272,7 +236,44 @@ export class SimulationEngine {
       queue_length: this.queue.length,
       staff_busy: this.staff.filter((agent) => agent.duty === "working").length,
       last_event: this.lastEvent,
+      alerts,
+      advise_pending: advisePending,
+      unpaid_wages: this.unpaidWages,
+      day_event: dayEventHudLabel(this.dayEvent),
     };
+  }
+
+  private ensureDayEvent(announce: boolean) {
+    this.dayEvent = pickDayEvent(this.simDay);
+    if (announce && this.dayEventAnnouncedFor !== this.simDay) {
+      this.dayEventAnnouncedFor = this.simDay;
+      this.lastEvent = `${this.dayEvent.title} — ${this.dayEvent.blurb}`;
+    }
+  }
+
+  /**
+   * Rattrapage métier après gel d’onglet (P0.5 / L5).
+   * Plafonné ; skip visuel (pas de rendu intermédiaire).
+   */
+  catchUp(simMinutesWanted: number): TickResult {
+    const savedSpeed = this.speed;
+    this.speed = 1;
+    const { result, banner } = runCatchUp(
+      simMinutesWanted,
+      this.paused,
+      (dtMs) => this.tick(dtMs),
+      () => this.clock(),
+    );
+    this.speed = savedSpeed;
+    if (banner) {
+      this.catchUpBanner = banner;
+      this.lastEvent = banner;
+    }
+    return result;
+  }
+
+  clearCatchUpBanner() {
+    this.catchUpBanner = null;
   }
 
   getRenderState(): RenderAgent[] {
@@ -346,14 +347,43 @@ export class SimulationEngine {
       this.closeShop(commits);
       this.simDay += 1;
       this.simMinutes = OPEN_MINUTES;
+      this.ensureDayEvent(true);
+      commits.push({
+        type: "event",
+        event_type: "DAY_EVENT",
+        message: `${this.dayEvent.title} — ${this.dayEvent.blurb}`,
+      });
+    } else {
+      this.ensureDayEvent(false);
     }
 
     this.moveAgents(dtMinutes);
     this.spawnVisitors(dtMinutes, commits);
     this.updateVisitors(dtMinutes, commits);
     this.updateStaff(dtMinutes, commits);
+    this.checkInboundArrivals(commits);
 
     return { commits, closed_day: closedDay, clock: this.clock() };
+  }
+
+  private checkInboundArrivals(commits: TickCommit[]) {
+    const current =
+      this.simDay * 24 * 60 + Math.floor(this.simMinutes);
+    for (const row of this.inbound) {
+      if (row.has_receive_task || this.notifiedArrivals.has(row.order_id)) {
+        continue;
+      }
+      const eta = row.eta_sim_day * 24 * 60 + row.eta_sim_minutes;
+      if (current < eta && !row.arrived) continue;
+      this.notifiedArrivals.add(row.order_id);
+      row.arrived = true;
+      commits.push({
+        type: "delivery_arrive",
+        order_id: row.order_id,
+        message: `Un convoi pour la commande #${row.order_id} arrive au quai.`,
+      });
+      this.lastEvent = `Convoi #${row.order_id} au quai — réceptionnaire requis.`;
+    }
   }
 
   noteSaleApplied(bookId: number) {
@@ -390,30 +420,18 @@ export class SimulationEngine {
     return value;
   }
 
-  private toStaffAgent(row: WorldEmployee): StaffAgent {
-    const role = (["clerk", "stocker", "receiver"].includes(row.role)
-      ? row.role
-      : "clerk") as EmployeeRole;
-    const home = homeForRole(role);
-    const pos = locStaff(home);
-    return {
-      id: row.id,
-      name: row.name,
-      role,
-      dna: parseDna(row.appearance_json),
-      stats: parseStats(row.stats_json),
-      x: pos.x,
-      y: pos.y,
-      path: [],
-      duty: "idle",
-      task_id: null,
-      work_left: 0,
-      home,
-    };
+  private grantXp(agent: StaffAgent, kind: StaffXpKind, commits: TickCommit[]) {
+    agent.stats = applyXpGains(agent.stats, kind);
+    commits.push({
+      type: "staff_xp",
+      employee_id: agent.id,
+      xp_kind: kind,
+    });
   }
 
   private closeShop(commits: TickCommit[]) {
     for (const visitor of this.visitors) {
+      this.cancelAdviseForVisitor(visitor);
       commits.push({
         type: "event",
         event_type: "CUSTOMER_LEAVE_EMPTY",
@@ -423,11 +441,14 @@ export class SimulationEngine {
     }
     this.visitors = [];
     this.queue = [];
+    this.tasks = this.tasks.filter((task) => task.type !== "ADVISE_CUSTOMER");
+    this.adviseByTask.clear();
     for (const agent of this.staff) {
       agent.path = [];
       agent.duty = "idle";
       agent.task_id = null;
       agent.work_left = 0;
+      agent.serving_visitor_id = null;
       agent.stats.fatigue = Math.max(8, agent.stats.fatigue * 0.35);
       const home = locStaff(agent.home);
       agent.x = home.x;
@@ -442,95 +463,23 @@ export class SimulationEngine {
     }
     if (this.visitors.length >= MAX_VISITORS) return;
     if (this.visitors.length + this.staff.length >= MAX_AGENTS) return;
-    const chance = spawnRate(this.simMinutes) * dtMinutes;
+    const chance =
+      spawnRate(this.simMinutes) * this.dayEvent.spawn_mult * dtMinutes;
     if (this.rng() > chance) return;
 
-    const visitor = this.createVisitor();
+    this.visitorSeq += 1;
+    const visitor = createVisitorAgent({
+      simDay: this.simDay,
+      visitorSeq: this.visitorSeq,
+      rng: () => this.rng(),
+      dayEvent: this.dayEvent,
+    });
     this.visitors.push(visitor);
     this.lastEvent = `${visitor.name} entre dans la Réserve.`;
   }
 
-  private createVisitor(): VisitorAgent {
-    this.visitorSeq += 1;
-    const useNamed = this.rng() < 0.2;
-    let name: string;
-    let loreCode: string | null = null;
-    let archetype: string;
-    let categories: string[];
-    let dna: CharacterDna;
-
-    if (useNamed) {
-      const named = pickWeighted(
-        NAMED_VISITORS,
-        (row) => WEIGHT_VALUE[row.simulation_weight],
-        () => this.rng(),
-      );
-      name = named.name;
-      loreCode = named.id;
-      archetype = named.archetype;
-      categories = named.preferred_categories;
-      dna = generateDna(`visitor-${named.id}`, { outfit: "scholar_coat" });
-    } else {
-      const arch = ARCHETYPES[Math.floor(this.rng() * ARCHETYPES.length)]!;
-      archetype = arch.name;
-      categories = [...arch.categories];
-      name = anonymousName(Math.floor(this.rng() * 10_000));
-      loreCode = null;
-      dna = generateDna(`anon-${this.visitorSeq}-${name}`, {
-        outfit: "visitor_cloak",
-      });
-    }
-
-    const preferredShelf = categoryToShelf(categories[0] ?? "Histoire");
-    const start = clampClientWalkable(spawnPoint());
-    const first = this.pickClientInterest(preferredShelf);
-    return {
-      id: `v-${this.simDay}-${this.visitorSeq}`,
-      name,
-      lore_code: loreCode,
-      archetype,
-      dna,
-      state: "roam",
-      x: start.x,
-      y: start.y,
-      path: findClientPath(start, first.point),
-      shelf_code: first.shelf,
-      book_id: null,
-      book_title: null,
-      patience: 10 + this.rng() * 14,
-      wait: 0,
-      browse_left: first.atShelf ? -1 : 0,
-      visits_left: 2 + Math.floor(this.rng() * 4),
-    };
-  }
-
-  /** Destination libre dans la salle : rayon (souvent) ou point au hasard. */
-  private pickClientInterest(preferredShelf?: string): {
-    point: { x: number; y: number };
-    shelf: string;
-    atShelf: boolean;
-  } {
-    const shelves = shelfCodes();
-    const fallback =
-      (preferredShelf && shelves.includes(preferredShelf)
-        ? preferredShelf
-        : shelves[0]) ?? "shelf_his";
-    if (this.rng() < 0.75 && shelves.length > 0) {
-      let code = shelves[Math.floor(this.rng() * shelves.length)]!;
-      if (
-        preferredShelf &&
-        shelves.includes(preferredShelf) &&
-        this.rng() < 0.5
-      ) {
-        code = preferredShelf;
-      }
-      return { point: locClient(code), shelf: code, atShelf: true };
-    }
-    return {
-      point: clampClientWalkable(randomHallPoint(() => this.rng())),
-      shelf: fallback,
-      atShelf: false,
-    };
+  private activeQueueCounter(): "counter" | "counter_b" {
+    return "counter";
   }
 
   private sendClient(visitor: VisitorAgent, dest: { x: number; y: number }) {
@@ -621,34 +570,41 @@ export class SimulationEngine {
         continue;
       }
 
-      if (visitor.state === "ask_staff") {
-        visitor.wait += dtMinutes;
-        const clerk = this.staff.find((agent) => agent.role === "clerk");
-        const advised = clerk && visitor.wait > 1.2;
-        if (advised) {
-          const book = this.pickBook(visitor.shelf_code) ?? this.pickBook(null);
-          if (book) {
-            visitor.book_id = book.book_id;
-            visitor.book_title = book.title;
-            visitor.state = "queue";
-            this.queue.push(visitor.id);
-            this.sendClient(
-              visitor,
-              clampClientWalkable(queueStand(this.queue.length)),
-            );
-          } else {
+      if (visitor.state === "read") {
+        visitor.browse_left -= dtMinutes;
+        if (visitor.browse_left <= 0) {
+          visitor.visits_left = Math.max(0, visitor.visits_left - 1);
+          if (visitor.visits_left <= 0 && this.rng() < 0.4) {
             visitor.state = "leave_empty";
             this.sendClient(visitor, locClient("entrance"));
             commits.push({
               type: "event",
-              event_type: "UNAVAILABLE_REQUEST",
+              event_type: "CUSTOMER_LEAVE_EMPTY",
               visitor_id: visitor.id,
-              message: `${visitor.name} : demande introuvable malgré le conseil du comptoir.`,
+              message: `${visitor.name} quitte la salle de lecture sans acheter.`,
             });
+          } else {
+            this.continueRoaming(visitor);
           }
-        } else if (visitor.wait > visitor.patience) {
+        }
+        still.push(visitor);
+        continue;
+      }
+
+      if (visitor.state === "ask_staff") {
+        visitor.wait += dtMinutes;
+        // Le clerk traite via tâche ADVISE_CUSTOMER (P0.2) — ici seulement l’impatience.
+        if (visitor.wait > visitor.patience) {
+          this.cancelAdviseForVisitor(visitor);
           visitor.state = "leave_empty";
           this.sendClient(visitor, locClient("entrance"));
+          commits.push({
+            type: "event",
+            event_type: "CUSTOMER_LEAVE_EMPTY",
+            visitor_id: visitor.id,
+            message: `${visitor.name} part sans conseil : le comptoir était trop lent.`,
+          });
+          this.lastEvent = `${visitor.name} abandonne l'attente au comptoir.`;
         }
         still.push(visitor);
         continue;
@@ -688,26 +644,54 @@ export class SimulationEngine {
 
   /** Après une consultation : acheter, continuer, demander conseil, ou partir. */
   private afterConsult(visitor: VisitorAgent, commits: TickCommit[]) {
-    const book = this.pickBook(visitor.shelf_code);
+    const book = pickBookForVisitor(this.books, visitor, () => this.rng());
+    const utility = book ? bookUtility(book, visitor) : 0;
     const roll = this.rng();
+    let buyChance = 0.1 + Math.min(0.28, utility / 55);
+    buyChance *= this.dayEvent.buy_mult;
+    if (visitor.temperament === "impatient") buyChance *= 0.85;
+    if (visitor.temperament === "rare_seeker") buyChance *= 0.9;
 
-    // Achat possible à chaque consultation (~22 %)
-    if (book && roll < 0.22) {
+    if (book && roll < buyChance) {
       visitor.book_id = book.book_id;
       visitor.book_title = book.title;
       visitor.state = "queue";
       this.queue.push(visitor.id);
+      const counter = this.activeQueueCounter();
       this.sendClient(
         visitor,
-        clampClientWalkable(queueStand(Math.max(0, this.queue.length - 1))),
+        clampClientWalkable(
+          queueStand(Math.max(0, this.queue.length - 1), counter),
+        ),
       );
       this.lastEvent = `${visitor.name} se dirige vers la caisse avec « ${book.title} ».`;
       return;
     }
 
+    // P2.7 — désordre soft (pas de vol) : rayon un peu chamboulé
+    if (visitor.temperament === "messy" && this.rng() < 0.35) {
+      commits.push({
+        type: "event",
+        event_type: "SHELF_DISORDER",
+        visitor_id: visitor.id,
+        message: `${visitor.name} laisse le rayon ${visitor.shelf_code.replace(/^shelf_/, "").toUpperCase()} en désordre.`,
+      });
+      this.lastEvent = `${visitor.name} dérange un rayon.`;
+    }
+
+    // P2.4 — pause lecture
+    if (this.rng() < (visitor.temperament === "calm" ? 0.18 : 0.08)) {
+      visitor.state = "read";
+      visitor.browse_left = 2.5 + this.rng() * 4;
+      this.sendClient(visitor, locClient("reading_room"));
+      this.lastEvent = `${visitor.name} s'installe en salle de lecture.`;
+      return;
+    }
+
     // Plus d’arrêts prévus → partir ou dernier tour
     if (visitor.visits_left <= 0) {
-      if (this.rng() < 0.55) {
+      const leaveChance = visitor.temperament === "impatient" ? 0.72 : 0.55;
+      if (this.rng() < leaveChance) {
         visitor.state = "leave_empty";
         this.sendClient(visitor, locClient("entrance"));
         commits.push({
@@ -724,19 +708,59 @@ export class SimulationEngine {
       return;
     }
 
-    // Parfois demander au comptoir
-    if (!book && this.rng() < 0.2) {
-      visitor.state = "ask_staff";
-      visitor.wait = 0;
-      this.sendClient(visitor, clampClientWalkable(queueStand(0)));
+    // Demande conseil — plus fréquent pour rare_seeker
+    const adviseChance =
+      visitor.temperament === "rare_seeker"
+        ? 0.45
+        : visitor.temperament === "impatient"
+          ? 0.18
+          : 0.28;
+    if ((!book || utility < 8) && this.rng() < adviseChance) {
+      this.requestAdvise(visitor, commits);
       return;
     }
 
     this.continueRoaming(visitor);
   }
 
+  private requestAdvise(visitor: VisitorAgent, commits: TickCommit[]) {
+    this.runtimeTaskSeq += 1;
+    const taskId = -this.runtimeTaskSeq;
+    this.tasks.push(createAdviseRuntimeTask(taskId));
+    this.adviseByTask.set(taskId, visitor.id);
+    visitor.advise_task_id = taskId;
+    visitor.state = "ask_staff";
+    visitor.wait = 0;
+    this.sendClient(
+      visitor,
+      clampClientWalkable(queueStand(0, this.activeQueueCounter())),
+    );
+    commits.push({
+      type: "event",
+      event_type: "ADVISE_REQUESTED",
+      visitor_id: visitor.id,
+      message: `${visitor.name} sollicite un conseil au comptoir.`,
+    });
+    this.lastEvent = `${visitor.name} demande conseil au comptoir.`;
+  }
+
+  private cancelAdviseForVisitor(visitor: VisitorAgent) {
+    const taskId = visitor.advise_task_id;
+    if (taskId == null) return;
+    this.tasks = this.tasks.filter((row) => row.id !== taskId);
+    this.adviseByTask.delete(taskId);
+    for (const agent of this.staff) {
+      if (agent.task_id === taskId) {
+        agent.task_id = null;
+        agent.duty = "idle";
+        agent.work_left = 0;
+      }
+    }
+    visitor.advise_task_id = null;
+  }
+
   private continueRoaming(visitor: VisitorAgent) {
-    const next = this.pickClientInterest(visitor.shelf_code);
+    const next = pickClientInterest(() => this.rng(), visitor.shelf_code);
     visitor.shelf_code = next.shelf;
     // browse_left < 0 = consulter à l’arrivée ; 0 = simple passage
     visitor.browse_left = next.atShelf ? -1 : 0;
@@ -746,7 +770,12 @@ export class SimulationEngine {
 
   private updateStaff(dtMinutes: number, commits: TickCommit[]) {
     for (const agent of this.staff) {
-      agent.stats.fatigue = Math.min(100, agent.stats.fatigue + dtMinutes * 0.15);
+      const moraleFatigue =
+        0.12 + (100 - Math.max(20, agent.stats.morale)) / 500;
+      agent.stats.fatigue = Math.min(
+        100,
+        agent.stats.fatigue + dtMinutes * moraleFatigue,
+      );
       if (agent.path.length > 0) continue;
 
       if (agent.role === "clerk") {
@@ -754,8 +783,7 @@ export class SimulationEngine {
         continue;
       }
       if (agent.duty === "working" && agent.work_left > 0) {
-        const fatigueSlow = 1 - agent.stats.fatigue / 250;
-        agent.work_left -= dtMinutes * Math.max(0.45, fatigueSlow);
+        agent.work_left -= dtMinutes * workPace(agent);
         if (agent.work_left <= 0) {
           this.finishStaffTask(agent, commits);
         }
@@ -777,71 +805,255 @@ export class SimulationEngine {
     dtMinutes: number,
     commits: TickCommit[],
   ) {
-    const home = locStaff("counter");
+    const home = locStaff(agent.home);
     if (Math.abs(agent.x - home.x) + Math.abs(agent.y - home.y) > 1) {
       agent.path = findPath({ x: agent.x, y: agent.y }, home);
       return;
+    }
+
+    // Conseil en cours (P0.2)
+    if (agent.duty === "working" && agent.task_id != null) {
+      const task = this.tasks.find((row) => row.id === agent.task_id);
+      if (task?.type === "ADVISE_CUSTOMER") {
+        agent.work_left -= dtMinutes * workPace(agent);
+        if (agent.work_left <= 0) {
+          this.finishAdvise(agent, commits);
+        }
+        return;
+      }
+    }
+
+    // Encaissement déjà pris en charge par ce clerk
+    if (
+      agent.duty === "working" &&
+      agent.task_id == null &&
+      agent.serving_visitor_id
+    ) {
+      const visitor = this.visitors.find(
+        (row) => row.id === agent.serving_visitor_id,
+      );
+      if (!visitor || visitor.state !== "checkout") {
+        agent.duty = "idle";
+        agent.work_left = 0;
+        agent.serving_visitor_id = null;
+      } else {
+        agent.work_left -= dtMinutes * workPace(agent);
+        if (agent.work_left <= 0) {
+          this.queue = this.queue.filter((id) => id !== visitor.id);
+          if (visitor.book_id) {
+            commits.push({
+              type: "sale",
+              book_id: visitor.book_id,
+              visitor_id: visitor.id,
+              employee_id: agent.id,
+              qty: 1,
+            });
+            this.lastEvent = `${visitor.name} acquiert « ${visitor.book_title} ».`;
+            commits.push({
+              type: "event",
+              event_type: "CUSTOMER_PURCHASE",
+              book_id: visitor.book_id,
+              visitor_id: visitor.id,
+              message: `${visitor.name} acquiert « ${visitor.book_title} ».`,
+            });
+            this.grantXp(agent, "checkout", commits);
+          }
+          visitor.state = "exit";
+          this.sendClient(visitor, locClient("entrance"));
+          agent.duty = "idle";
+          agent.work_left = 0;
+          agent.serving_visitor_id = null;
+        }
+        return;
+      }
     }
 
     const headId = this.queue[0];
     const visitor = headId
       ? this.visitors.find((row) => row.id === headId)
       : undefined;
-    if (!visitor || visitor.path.length > 0) {
-      agent.duty = "idle";
-      return;
-    }
 
-    if (visitor.state === "queue") {
+    if (visitor && visitor.path.length === 0 && visitor.state === "queue") {
+      const preferredId = preferredCashierId(this.staff);
+      const otherServing = this.staff.some(
+        (row) =>
+          row.id !== agent.id &&
+          row.serving_visitor_id === visitor.id &&
+          row.duty === "working",
+      );
+      if (otherServing) {
+        this.takeAdviseTask(agent);
+        return;
+      }
+      if (preferredId != null && preferredId !== agent.id) {
+        const preferred = this.staff.find((row) => row.id === preferredId);
+        if (
+          preferred &&
+          preferred.duty === "idle" &&
+          preferred.path.length === 0
+        ) {
+          this.takeAdviseTask(agent);
+          return;
+        }
+      }
       visitor.state = "checkout";
       agent.duty = "working";
-      const speed = Math.max(20, agent.stats.checkout_speed);
-      agent.work_left = 1.4 + (100 - speed) / 40;
       agent.task_id = null;
+      agent.serving_visitor_id = visitor.id;
+      const speed = Math.max(20, agent.stats.checkout_speed);
+      let work = 1.4 + (100 - speed) / 40;
+      work *= moraleFatigueFactor(agent);
+      if (!reliabilityOk(agent, () => this.rng())) {
+        work *= 1.35;
+      }
+      agent.work_left = work;
       return;
     }
 
-    if (visitor.state === "checkout") {
-      agent.work_left -= dtMinutes;
-      if (agent.work_left <= 0) {
-        this.queue.shift();
-        if (visitor.book_id) {
-          commits.push({
-            type: "sale",
-            book_id: visitor.book_id,
-            visitor_id: visitor.id,
-            qty: 1,
-          });
-          this.lastEvent = `${visitor.name} acquiert « ${visitor.book_title} ».`;
-          commits.push({
-            type: "event",
-            event_type: "CUSTOMER_PURCHASE",
-            book_id: visitor.book_id,
-            visitor_id: visitor.id,
-            message: `${visitor.name} acquiert « ${visitor.book_title} ».`,
-          });
-        }
-        visitor.state = "exit";
-        this.sendClient(visitor, locClient("entrance"));
-        agent.duty = "idle";
-        agent.work_left = 0;
+    if (visitor && visitor.state === "checkout") {
+      if (agent.serving_visitor_id !== visitor.id) {
+        this.takeAdviseTask(agent);
+        return;
       }
+    }
+
+    if (agent.duty !== "working") {
+      agent.duty = "idle";
+      this.takeAdviseTask(agent);
     }
   }
 
+  private takeAdviseTask(agent: StaffAgent) {
+    if (agent.role !== "clerk") return;
+    const task = this.tasks
+      .filter(
+        (row) =>
+          row.type === "ADVISE_CUSTOMER" &&
+          (row.status === "pending" ||
+            (row.status === "in_progress" && row.assignee_id === agent.id)),
+      )
+      .sort((a, b) => b.priority - a.priority)[0];
+    if (!task) return;
+
+    const visitorId = this.adviseByTask.get(task.id);
+    const visitor = visitorId
+      ? this.visitors.find(
+          (row) => row.id === visitorId && row.state === "ask_staff",
+        )
+      : undefined;
+    if (!visitor || visitor.path.length > 0) return;
+
+    task.status = "in_progress";
+    task.assignee_id = agent.id;
+    agent.duty = "working";
+    agent.task_id = task.id;
+    agent.work_left = adviseWorkMinutes(
+      agent.stats.advice,
+      specialtyMatchesVisitor(agent, visitor),
+      moraleFatigueFactor(agent),
+    );
+  }
+
+  private finishAdvise(agent: StaffAgent, commits: TickCommit[]) {
+    const task = this.tasks.find((row) => row.id === agent.task_id);
+    const visitorId = task ? this.adviseByTask.get(task.id) : undefined;
+    const visitor = visitorId
+      ? this.visitors.find((row) => row.id === visitorId)
+      : undefined;
+
+    if (task) {
+      this.tasks = this.tasks.filter((row) => row.id !== task.id);
+      this.adviseByTask.delete(task.id);
+    }
+    agent.duty = "idle";
+    agent.task_id = null;
+    agent.work_left = 0;
+
+    if (!visitor || visitor.state !== "ask_staff") return;
+
+    visitor.advise_task_id = null;
+    const adviceScore = Math.max(10, agent.stats.advice);
+    const successChance = adviseSuccessChance({
+      advice: adviceScore,
+      specialtyBonus: specialtyMatchesVisitor(agent, visitor),
+      morale: agent.stats.morale,
+    });
+    const reliable = reliabilityOk(agent, () => this.rng());
+
+    if (!reliable || this.rng() > successChance) {
+      visitor.state = "leave_empty";
+      this.sendClient(visitor, locClient("entrance"));
+      commits.push({
+        type: "advise",
+        task_id: task && task.id > 0 ? task.id : null,
+        visitor_id: visitor.id,
+      });
+      commits.push({
+        type: "event",
+        event_type: "ADVISE_FAILED",
+        visitor_id: visitor.id,
+        message: `${agent.name} ne trouve pas d’ouvrage adapté pour ${visitor.name}.`,
+      });
+      this.lastEvent = `${visitor.name} repart après un conseil infructueux.`;
+      return;
+    }
+
+    const book =
+      pickBookForVisitor(this.books, visitor, () => this.rng(), {
+        boostAdvice: adviceScore,
+      }) ??
+      pickBookForVisitor(this.books, visitor, () => this.rng(), {
+        anyShelf: true,
+        boostAdvice: adviceScore,
+      });
+
+    if (!book) {
+      visitor.state = "leave_empty";
+      this.sendClient(visitor, locClient("entrance"));
+      commits.push({
+        type: "advise",
+        task_id: task && task.id > 0 ? task.id : null,
+        visitor_id: visitor.id,
+      });
+      commits.push({
+        type: "event",
+        event_type: "UNAVAILABLE_REQUEST",
+        visitor_id: visitor.id,
+        message: `${visitor.name} : demande introuvable malgré le conseil de ${agent.name}.`,
+      });
+      return;
+    }
+
+    visitor.book_id = book.book_id;
+    visitor.book_title = book.title;
+    visitor.state = "queue";
+    this.queue.push(visitor.id);
+    this.sendClient(
+      visitor,
+      clampClientWalkable(
+        queueStand(this.queue.length, this.activeQueueCounter()),
+      ),
+    );
+    commits.push({
+      type: "advise",
+      task_id: task && task.id > 0 ? task.id : null,
+      visitor_id: visitor.id,
+      book_id: book.book_id,
+    });
+    commits.push({
+      type: "event",
+      event_type: "ADVISE_SUCCESS",
+      visitor_id: visitor.id,
+      book_id: book.book_id,
+      message: `${agent.name} oriente ${visitor.name} vers « ${book.title} ».`,
+    });
+    this.lastEvent = `${agent.name} conseille « ${book.title} » à ${visitor.name}.`;
+    this.grantXp(agent, "advise", commits);
+  }
+
   private takeStaffTask(agent: StaffAgent) {
-    const wanted =
-      agent.role === "stocker"
-        ? "RESTOCK_SHELF"
-        : agent.role === "receiver"
-          ? "RECEIVE_DELIVERY"
-          : null;
-    if (!wanted) return;
-    const task = this.tasks.find(
-      (row) =>
-        row.type === wanted &&
-        (row.status === "pending" ||
-          (row.status === "in_progress" && row.assignee_id === agent.id)),
+    const task = pickLogisticsTask(agent, this.tasks, (bookId) =>
+      shelfForBook(this.books, bookId),
     );
     if (!task) return;
 
@@ -855,7 +1067,16 @@ export class SimulationEngine {
       agent.role === "stocker"
         ? agent.stats.restock_speed
         : agent.stats.receive_speed;
-    agent.work_left = 2.5 + (100 - speed) / 35;
+    const specialtyBonus =
+      agent.role === "stocker" &&
+      task.book_id != null &&
+      specialtyMatchesShelf(agent, shelfForBook(this.books, task.book_id));
+    agent.work_left = logisticsWorkMinutes({
+      speedStat: speed,
+      specialtyBonus,
+      moraleFatigue: moraleFatigueFactor(agent),
+      reliabilityFail: !reliabilityOk(agent, () => this.rng()),
+    });
   }
 
   private finishStaffTask(agent: StaffAgent, commits: TickCommit[]) {
@@ -867,32 +1088,47 @@ export class SimulationEngine {
     }
 
     if (agent.role === "stocker" && task.book_id) {
-      const dest = loc(this.shelfForBook(task.book_id));
+      const dest = loc(shelfForBook(this.books, task.book_id));
       if (Math.abs(agent.x - dest.x) + Math.abs(agent.y - dest.y) > 1) {
         agent.path = findPath({ x: agent.x, y: agent.y }, dest);
-        agent.work_left = 1.2;
+        agent.work_left = 1.2 * moraleFatigueFactor(agent);
         return;
       }
       const book = this.books.find((row) => row.book_id === task.book_id);
-      const qty = Math.min(book?.qty_reserve ?? 1, 5, 10 - (book?.qty_shelf ?? 0));
+      let qty = Math.min(book?.qty_reserve ?? 1, 5, 10 - (book?.qty_shelf ?? 0));
+      // Fiabilité basse → moins d’exemplaires correctement rangés
+      if (!reliabilityOk(agent, () => this.rng()) && qty > 1) {
+        qty = Math.max(1, qty - 1);
+      }
+      if (specialtyMatchesShelf(agent, shelfForBook(this.books, task.book_id))) {
+        qty = Math.min(
+          book?.qty_reserve ?? qty,
+          qty + 1,
+          10 - (book?.qty_shelf ?? 0),
+        );
+      }
       if (qty > 0) {
         commits.push({
           type: "restock",
-          task_id: task.id,
+          task_id: task.id > 0 ? task.id : null,
           book_id: task.book_id,
           qty,
+          employee_id: agent.id,
         });
         this.lastEvent = `${agent.name} remet en rayon « ${book?.title ?? "un ouvrage"} ».`;
+        this.grantXp(agent, "restock", commits);
       }
     }
 
     if (agent.role === "receiver" && task.order_id) {
       commits.push({
         type: "receive",
-        task_id: task.id,
+        task_id: task.id > 0 ? task.id : null,
         order_id: task.order_id,
+        employee_id: agent.id,
       });
       this.lastEvent = `${agent.name} réceptionne un convoi.`;
+      this.grantXp(agent, "receive", commits);
     }
 
     this.tasks = this.tasks.filter((row) => row.id !== task.id);
@@ -900,29 +1136,4 @@ export class SimulationEngine {
     agent.task_id = null;
     agent.path = findPath({ x: agent.x, y: agent.y }, locStaff(agent.home));
   }
-
-  private shelfForBook(bookId: number): string {
-    const book = this.books.find((row) => row.book_id === bookId);
-    if (!book) return shelfLocationFromCategoryCode("HIS");
-    return categoryCodeToShelf(book.category_code);
-  }
-
-  private pickBook(shelfCode: string | null): WorldBook | null {
-    const eligible = this.books.filter((book) => {
-      if (book.qty_shelf <= 0) return false;
-      if (book.rarity === "legendary" || book.rarity === "mythic") {
-        return this.rng() < 0.04;
-      }
-      if (!shelfCode) return true;
-      return categoryCodeToShelf(book.category_code) === shelfCode;
-    });
-    if (eligible.length === 0) return null;
-    return eligible[Math.floor(this.rng() * eligible.length)] ?? null;
-  }
-}
-
-function homeForRole(role: EmployeeRole): string {
-  if (role === "stocker") return "reserve";
-  if (role === "receiver") return "dock";
-  return "counter";
 }
