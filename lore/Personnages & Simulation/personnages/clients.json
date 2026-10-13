@@ -1,0 +1,206 @@
+[
+  {
+    "id": "CLI-001",
+    "name": "Lorian Veyr",
+    "archetype": "Apprenti mage",
+    "profession": "Élève du troisième cercle d'étude arcanique",
+    "origin_sector": "III",
+    "preferred_categories": ["Arcane", "Histoire"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Introduction aux Flux de la Trame",
+      "Symboles et Structures de la Trame",
+      "Chroniques Civiles"
+    ],
+    "personality_traits": ["curieux", "méthodique"],
+    "counter_line": "Je cherche un manuel clair avant de consulter des traités plus avancés.",
+    "simulation_weight": "high"
+  },
+  {
+    "id": "CLI-002",
+    "name": "Maëra Solven",
+    "archetype": "Apprenti mage",
+    "profession": "Assistante dans un atelier d'étude de la Trame",
+    "origin_sector": "III",
+    "preferred_categories": ["Arcane"],
+    "rarity_preference": "mixed",
+    "typical_book_titles": [
+      "Introduction aux Flux de la Trame",
+      "Principes de Résonance Arcanique",
+      "Anatomie Céleste"
+    ],
+    "personality_traits": ["patiente", "appliquée"],
+    "counter_line": "Auriez-vous une édition annotée pour les exercices de base ?",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-003",
+    "name": "Teren Alvior",
+    "archetype": "Étudiant des écoles archivistiques",
+    "profession": "Élève archiviste en formation",
+    "origin_sector": "IV",
+    "preferred_categories": ["Histoire", "Arcane"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Notes de Voyageur",
+      "Annales des Maisons Anciennes"
+    ],
+    "personality_traits": ["organisé", "sérieux"],
+    "counter_line": "Il me faut des références fiables pour mon travail de classement.",
+    "simulation_weight": "high"
+  },
+  {
+    "id": "CLI-004",
+    "name": "Yselle Marovan",
+    "archetype": "Étudiant des écoles archivistiques",
+    "profession": "Chercheuse junior en histoire documentaire",
+    "origin_sector": "I",
+    "preferred_categories": ["Histoire"],
+    "rarity_preference": "mixed",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Notes de Voyageur",
+      "Chroniques des Royaumes Disparus"
+    ],
+    "personality_traits": ["curieuse", "perfectionniste"],
+    "counter_line": "Je recherche une édition reconnue par la Guilde.",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-005",
+    "name": "Calien Rhovar",
+    "archetype": "Botaniste",
+    "profession": "Herboriste indépendant",
+    "origin_sector": "II",
+    "preferred_categories": ["Botanique"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Herbier des Plaines Fertiles",
+      "Manuel des Herbes Communes",
+      "Flora de l'Abîme"
+    ],
+    "personality_traits": ["observateur", "pragmatique"],
+    "counter_line": "Je cherche des ouvrages pratiques, pas seulement des descriptions théoriques.",
+    "simulation_weight": "high"
+  },
+  {
+    "id": "CLI-006",
+    "name": "Nalia Verdan",
+    "archetype": "Botaniste",
+    "profession": "Chercheuse en flore des régions extrêmes",
+    "origin_sector": "IV",
+    "preferred_categories": ["Botanique", "Arcane"],
+    "rarity_preference": "rare",
+    "typical_book_titles": [
+      "Flora de l'Abîme",
+      "Herbier des Plaines Fertiles",
+      "Plantes des Collines Brumeuses"
+    ],
+    "personality_traits": ["concentrée", "précise"],
+    "counter_line": "Je consulte uniquement les éditions dont la provenance est certifiée.",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-007",
+    "name": "Oren Caldrys",
+    "archetype": "Érudit",
+    "profession": "Historien indépendant",
+    "origin_sector": "I",
+    "preferred_categories": ["Histoire"],
+    "rarity_preference": "mixed",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Annales des Maisons Anciennes",
+      "Notes de Voyageur"
+    ],
+    "personality_traits": ["patient", "analytique"],
+    "counter_line": "Je cherche des sources secondaires avant de poursuivre mes recherches.",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-008",
+    "name": "Selma Orvane",
+    "archetype": "Érudit",
+    "profession": "Chercheuse en étude comparée des cycles historiques",
+    "origin_sector": "IV",
+    "preferred_categories": ["Histoire", "Nécromancie"],
+    "rarity_preference": "mixed",
+    "typical_book_titles": [
+      "Chroniques des Royaumes Disparus",
+      "Chroniques Civiles",
+      "Les Coutumes Funéraires des Royaumes Anciens"
+    ],
+    "personality_traits": ["réservée", "érudite"],
+    "counter_line": "Je souhaite compléter une bibliographie existante.",
+    "simulation_weight": "low"
+  },
+  {
+    "id": "CLI-009",
+    "name": "Darel Voskan",
+    "archetype": "Fonctionnaire de la Guilde",
+    "profession": "Agent administratif archivistique",
+    "origin_sector": "IV",
+    "preferred_categories": ["Histoire"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Registre des Quartiers Septentrionaux",
+      "Notes de Voyageur"
+    ],
+    "personality_traits": ["rigoureux", "direct"],
+    "counter_line": "Il me faut un exemplaire conforme aux normes de la Guilde.",
+    "simulation_weight": "high"
+  },
+  {
+    "id": "CLI-010",
+    "name": "Elira Montess",
+    "archetype": "Marchand",
+    "profession": "Négociante en fournitures documentaires",
+    "origin_sector": "II",
+    "preferred_categories": ["Histoire", "Botanique"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Herbier des Plaines Fertiles",
+      "Cartes des Royaumes Perdus"
+    ],
+    "personality_traits": ["sociable", "efficace"],
+    "counter_line": "Je cherche plusieurs références utiles pour mes comptoirs.",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-011",
+    "name": "Kael Ruvian",
+    "archetype": "Voyageur",
+    "profession": "Cartographe itinérant",
+    "origin_sector": "IV",
+    "preferred_categories": ["Histoire", "Botanique"],
+    "rarity_preference": "common",
+    "typical_book_titles": [
+      "Notes de Voyageur",
+      "Cartes des Royaumes Perdus",
+      "Atlas des Provinces Anciennes"
+    ],
+    "personality_traits": ["curieux", "adaptable"],
+    "counter_line": "Je pars bientôt, il me faut des références fiables et compactes.",
+    "simulation_weight": "medium"
+  },
+  {
+    "id": "CLI-012",
+    "name": "Arwen Lysorel",
+    "archetype": "Représentant d'institution",
+    "profession": "Conservatrice d'un centre d'étude local",
+    "origin_sector": "IV",
+    "preferred_categories": ["Histoire", "Arcane"],
+    "rarity_preference": "mixed",
+    "typical_book_titles": [
+      "Chroniques Civiles",
+      "Anatomie Céleste",
+      "Chroniques des Royaumes Disparus"
+    ],
+    "personality_traits": ["diplomate", "exigeante"],
+    "counter_line": "Cette acquisition sera enregistrée au nom de notre institution.",
+    "simulation_weight": "low"
+  }
+]

@@ -1,0 +1,107 @@
+{
+  "version": "1.2",
+  "locked_at": "Cycle 08 — Millénaire 4.2",
+  "notes": "Taxonomie canonique validée post-Chat 6. Pas de sous-catégories. Rareté = disponibilité, pas puissance.",
+  "rarities": [
+    {
+      "id": "common",
+      "label_fr": "Commun",
+      "target_share_pct": { "min": 60, "max": 60 },
+      "price_range_florins": { "min": 8, "max": 40 },
+      "commercial": true
+    },
+    {
+      "id": "uncommon",
+      "label_fr": "Peu commun",
+      "target_share_pct": { "min": 23, "max": 23 },
+      "price_range_florins": { "min": 40, "max": 120 },
+      "commercial": true
+    },
+    {
+      "id": "rare",
+      "label_fr": "Rare",
+      "target_share_pct": { "min": 11, "max": 11 },
+      "price_range_florins": { "min": 200, "max": 700 },
+      "commercial": true
+    },
+    {
+      "id": "legendary",
+      "label_fr": "Légendaire",
+      "target_share_pct": { "min": 4, "max": 4 },
+      "price_range_florins": { "min": 800, "max": 2500 },
+      "commercial": true
+    },
+    {
+      "id": "mythic",
+      "label_fr": "Mythique",
+      "target_share_pct": { "min": 1, "max": 2 },
+      "price_range_florins": { "min": 2500, "max": 10000 },
+      "commercial": true
+    },
+    {
+      "id": "sealed",
+      "label_fr": "Scellé",
+      "target_share_pct": null,
+      "price_range_florins": null,
+      "commercial": false,
+      "notes": "Hors catalogue de vente ; consultation Guilde uniquement."
+    }
+  ],
+  "categories": [
+    { "id": "CAT-01", "name": "Arcane", "group": "Magie & occultisme" },
+    { "id": "CAT-02", "name": "Rituels", "group": "Magie & occultisme" },
+    { "id": "CAT-03", "name": "Invocation", "group": "Magie & occultisme" },
+    { "id": "CAT-04", "name": "Illusions", "group": "Magie & occultisme" },
+    { "id": "CAT-05", "name": "Destruction", "group": "Magie & occultisme" },
+    { "id": "CAT-06", "name": "Malédictions", "group": "Magie & occultisme" },
+    { "id": "CAT-07", "name": "Sacré", "group": "Magie & occultisme" },
+    { "id": "CAT-08", "name": "Guérison", "group": "Magie & occultisme" },
+    { "id": "CAT-09", "name": "Nécromancie", "group": "Magie & occultisme" },
+    { "id": "CAT-10", "name": "Enchantements", "group": "Magie & occultisme" },
+    { "id": "CAT-11", "name": "Divination & Astronomie", "group": "Ciel, secrets & matière" },
+    { "id": "CAT-12", "name": "Alchimie", "group": "Ciel, secrets & matière" },
+    { "id": "CAT-13", "name": "Minéraux & Métaux", "group": "Ciel, secrets & matière" },
+    { "id": "CAT-14", "name": "Botanique & Agriculture", "group": "Nature & vivant" },
+    { "id": "CAT-15", "name": "Faune & Monstres", "group": "Nature & vivant" },
+    { "id": "CAT-16", "name": "Guerre", "group": "Guerre, corps & exploration" },
+    { "id": "CAT-17", "name": "Armes et Armures", "group": "Guerre, corps & exploration" },
+    { "id": "CAT-18", "name": "Médecine", "group": "Guerre, corps & exploration" },
+    { "id": "CAT-19", "name": "Donjons & Voyages", "group": "Guerre, corps & exploration" },
+    { "id": "CAT-20", "name": "Histoire", "group": "Société & métiers" },
+    { "id": "CAT-21", "name": "Commerce & Droit", "group": "Société & métiers" },
+    { "id": "CAT-22", "name": "Métiers", "group": "Société & métiers" },
+    { "id": "CAT-23", "name": "Arts & Musique", "group": "Arts, lettres & sciences humaines" },
+    { "id": "CAT-24", "name": "Langues & Sociologie", "group": "Arts, lettres & sciences humaines" },
+    { "id": "CAT-25", "name": "Philosophie & Psychologie", "group": "Arts, lettres & sciences humaines" },
+    { "id": "CAT-26", "name": "Romans", "group": "Arts, lettres & sciences humaines" },
+    { "id": "CAT-27", "name": "Gastronomie", "group": "Table" }
+  ],
+  "special_categories": [
+    {
+      "id": "CAT-SCELL",
+      "name": "Archives scellées",
+      "commercial": false,
+      "notes": "Hors filtres de vente ; consultation Guilde."
+    }
+  ],
+  "legacy_mapping_v1_1": {
+    "notes": "Migration provisoire des 4 catégories Chat 4 vers la taxonomie v1.2. Les IDs HIS/BOT/ARC/NEC restent stables.",
+    "Histoire": ["Histoire", "Donjons & Voyages", "Commerce & Droit", "Guerre"],
+    "Botanique": ["Botanique & Agriculture", "Faune & Monstres", "Alchimie"],
+    "Arcane": ["Arcane", "Rituels", "Invocation", "Enchantements", "Divination & Astronomie"],
+    "Nécromancie": ["Nécromancie", "Malédictions", "Sacré"]
+  },
+  "canonical_app_books": [
+    { "id": "HIS-001", "title": "Chroniques Civiles", "category": "Histoire", "rarity": "common" },
+    { "id": "HIS-002", "title": "Notes de Voyageur", "category": "Donjons & Voyages", "rarity": "common" },
+    { "id": "BOT-008", "title": "Flora de l'Abîme", "category": "Botanique & Agriculture", "rarity": "rare" },
+    { "id": "ARC-033", "title": "Anatomie Céleste", "category": "Divination & Astronomie", "rarity": "rare" },
+    { "id": "ARC-040", "title": "L'Oeil de l'Éclipse", "category": "Arcane", "rarity": "legendary" },
+    { "id": "NEC-020", "title": "Necronomicon Sim", "category": "Nécromancie", "rarity": "legendary" }
+  ],
+  "migration_status": {
+    "catalogue_json": "done — 27 category files, remapped ids, ~671 titles",
+    "app_schema": "done — books.lore_code + books.rarity + books.cover_url ; seed 27 categories + authors + supplier",
+    "note": "Catalogue lore v1.2 : 27 fichiers catégorie, IDs/cotes remappés, codes milieu format (plus de -GEN-). Intégration app (proportions, seed sync) = tâche séparée."
+  }
+}

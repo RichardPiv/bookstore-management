@@ -1,0 +1,490 @@
+[
+  {
+    "entity_id": "LOC-001",
+    "name": "Hillsvaire C.2",
+    "type": "location",
+    "subtype": "archives_quarter",
+    "sector": "IV",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-002",
+    "name": "La Réserve des Grimoires",
+    "type": "location",
+    "subtype": "library",
+    "sector": "IV",
+    "source_document": "La Librairie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-003",
+    "name": "Port-Aster",
+    "type": "location",
+    "subtype": "trade_city",
+    "sector": "II",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-004",
+    "name": "Dépôt Central des Copistes de Port-Aster",
+    "type": "location",
+    "subtype": "supplier_depot",
+    "sector": "II",
+    "source_document": "La Librairie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-005",
+    "name": "Quai des Convoyeurs",
+    "type": "location",
+    "subtype": "reception_dock",
+    "sector": "IV",
+    "source_document": "La Librairie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-006",
+    "name": "Val-Simor",
+    "type": "location",
+    "subtype": "regional_city",
+    "sector": "I",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-007",
+    "name": "Asterion",
+    "type": "location",
+    "subtype": "regional_city",
+    "sector": "III",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-008",
+    "name": "Secteur I",
+    "type": "location",
+    "subtype": "administrative_sector",
+    "sector": "I",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-009",
+    "name": "Secteur II",
+    "type": "location",
+    "subtype": "administrative_sector",
+    "sector": "II",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-010",
+    "name": "Secteur III",
+    "type": "location",
+    "subtype": "administrative_sector",
+    "sector": "III",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-011",
+    "name": "Secteur IV",
+    "type": "location",
+    "subtype": "administrative_sector",
+    "sector": "IV",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "LOC-012",
+    "name": "Archives Mondiales du Secteur IV",
+    "type": "location",
+    "subtype": "archives_institution",
+    "sector": "IV",
+    "source_document": "Géographie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "FAC-001",
+    "name": "Guilde des Archivistes de Sim",
+    "type": "faction",
+    "subtype": "professional_guild",
+    "source_document": "Cosmologie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "FAC-002",
+    "name": "Archives Mondiales",
+    "type": "faction",
+    "subtype": "institutional_network",
+    "source_document": "Cosmologie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-001",
+    "name": "Grand Archiviste",
+    "type": "character",
+    "subtype": "player",
+    "character_id": null,
+    "source_document": "La Librairie v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-002",
+    "name": "Maître Elian Voss",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-001",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-003",
+    "name": "Sœur Maëline",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-002",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-004",
+    "name": "Corvin Hale",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-003",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-005",
+    "name": "Ilyan Meros",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-004",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-006",
+    "name": "Archiviste Lysa Corven",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-005",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-007",
+    "name": "Maître Renald Vosmere",
+    "type": "character",
+    "subtype": "npc",
+    "character_id": "NPC-006",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-008",
+    "name": "Lorian Veyr",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-001",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-009",
+    "name": "Maëra Solven",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-002",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-010",
+    "name": "Teren Alvior",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-003",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-011",
+    "name": "Yselle Marovan",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-004",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-012",
+    "name": "Calien Rhovar",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-005",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-013",
+    "name": "Nalia Verdan",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-006",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-014",
+    "name": "Oren Caldrys",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-007",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-015",
+    "name": "Selma Orvane",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-008",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-016",
+    "name": "Darel Voskan",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-009",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-017",
+    "name": "Elira Montess",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-010",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-018",
+    "name": "Kael Ruvian",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-011",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-019",
+    "name": "Arwen Lysorel",
+    "type": "character",
+    "subtype": "client",
+    "character_id": "CLI-012",
+    "source_document": "Personnages v1.0",
+    "status": "canon"
+  },
+  {
+    "entity_id": "PER-020",
+    "name": "Maître Sorin Vale",
+    "type": "character",
+    "subtype": "copiste_independant",
+    "character_id": null,
+    "source_document": "Personnages v1.0 §8",
+    "status": "provisoire"
+  },
+  {
+    "entity_id": "HIS-001",
+    "name": "Chroniques Civiles",
+    "type": "book",
+    "catalogue_id": "HIS-001",
+    "category": "Histoire",
+    "rarity": "common",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "HIS-002",
+    "name": "Notes de Voyageur",
+    "type": "book",
+    "catalogue_id": "HIS-002",
+    "category": "Histoire",
+    "rarity": "common",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "BOT-008",
+    "name": "Flora de l'Abîme",
+    "type": "book",
+    "catalogue_id": "BOT-008",
+    "category": "Botanique",
+    "rarity": "rare",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "ARC-033",
+    "name": "Anatomie Céleste",
+    "type": "book",
+    "catalogue_id": "ARC-033",
+    "category": "Arcane",
+    "rarity": "rare",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "ARC-040",
+    "name": "L'Oeil de l'Éclipse",
+    "type": "book",
+    "catalogue_id": "ARC-040",
+    "category": "Arcane",
+    "rarity": "legendary",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "NEC-020",
+    "name": "Necronomicon Sim",
+    "type": "book",
+    "catalogue_id": "NEC-020",
+    "category": "Nécromancie",
+    "rarity": "legendary",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "HIS-039",
+    "name": "La Mémoire des Anciens Cycles",
+    "type": "book",
+    "catalogue_id": "HIS-039",
+    "category": "Histoire",
+    "rarity": "rare",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "BOT-059",
+    "name": "Les Plantes de la Grande Convergence",
+    "type": "book",
+    "catalogue_id": "BOT-059",
+    "category": "Botanique",
+    "rarity": "rare",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "SCELL-001",
+    "name": "Le Testament du Premier Archiviste",
+    "type": "book",
+    "catalogue_id": "SCELL-001",
+    "category": "Archives scellées",
+    "rarity": "sealed",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "SCELL-002",
+    "name": "Le Codex des Portes Sans Retour",
+    "type": "book",
+    "catalogue_id": "SCELL-002",
+    "category": "Archives scellées",
+    "rarity": "sealed",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "SCELL-003",
+    "name": "Les Chroniques de la Dernière Nuit",
+    "type": "book",
+    "catalogue_id": "SCELL-003",
+    "category": "Archives scellées",
+    "rarity": "sealed",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "SCELL-004",
+    "name": "Le Livre des Noms Effacés",
+    "type": "book",
+    "catalogue_id": "SCELL-004",
+    "category": "Archives scellées",
+    "rarity": "sealed",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-001",
+    "name": "Registres de Port-Aster",
+    "type": "collection",
+    "domain": "Histoire administrative",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-002",
+    "name": "Herbiers du Cercle Vert",
+    "type": "collection",
+    "domain": "Botanique pratique",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-003",
+    "name": "Études de la Trame",
+    "type": "collection",
+    "domain": "Théorie magique",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-004",
+    "name": "Archives des Anciens Cycles",
+    "type": "collection",
+    "domain": "Histoire ancienne",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-005",
+    "name": "Guides de l'Explorateur",
+    "type": "collection",
+    "domain": "Voyages et survie",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-006",
+    "name": "Traités de la Trame Moderne",
+    "type": "collection",
+    "domain": "Théories contemporaines",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-007",
+    "name": "Cartographies Célestes",
+    "type": "collection",
+    "domain": "Astronomie et cartographie",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  },
+  {
+    "entity_id": "COL-008",
+    "name": "Archives de la Convergence",
+    "type": "collection",
+    "domain": "Événements magiques majeurs",
+    "source_document": "Catalogue v1.1",
+    "status": "canon"
+  }
+]

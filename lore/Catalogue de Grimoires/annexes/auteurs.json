@@ -1,0 +1,162 @@
+[
+  {
+    "name": "Aldren Vey",
+    "specialty": "Chroniques civiles",
+    "sector": "I",
+    "period": "Cycle 08",
+    "notable_works": ["Chroniques Civiles"],
+    "notes": "Historien municipal ; auteur de registres du secteur septentrional."
+  },
+  {
+    "name": "Mira Solenne",
+    "specialty": "Botanique médicinale",
+    "sector": "II",
+    "period": "Cycle 08",
+    "notable_works": ["Guide pratique des Racines et Feuilles Médicinales"],
+    "notes": "Référence des guérisseurs et apothicaires."
+  },
+  {
+    "name": "Kael Dornar",
+    "specialty": "Récits de voyage",
+    "sector": "IV",
+    "period": "Cycle 07-08",
+    "notable_works": ["Notes de Voyageur"],
+    "notes": "Explorateur des Terres Désolées du Sud."
+  },
+  {
+    "name": "Serian Valcor",
+    "specialty": "Théorie arcanique",
+    "sector": "III",
+    "period": "Cycle 08",
+    "notable_works": ["Introduction aux Principes de la Trame"],
+    "notes": "Chercheur du Collège des Études de la Trame."
+  },
+  {
+    "name": "Elira Voss",
+    "specialty": "Botanique des régions extrêmes",
+    "sector": "II",
+    "period": "Cycle 08",
+    "notable_works": ["Flora de l'Abîme"],
+    "notes": "Spécialiste des flores des profondeurs."
+  },
+  {
+    "name": "Theren Malvek",
+    "specialty": "Cosmologie arcanique",
+    "sector": "III",
+    "period": "Cycle 06",
+    "notable_works": ["Anatomie Céleste"],
+    "notes": "Chercheur des phénomènes de la Grande Convergence."
+  },
+  {
+    "name": "Maître Elian Voss",
+    "specialty": "Classement archivistique",
+    "sector": "IV",
+    "period": "Cycle 08",
+    "notable_works": [],
+    "notes": "Commis réceptionnaire à La Réserve des Grimoires, Hillsvaire C.2. Aucun ouvrage d'auteur principal."
+  },
+  {
+    "name": "Lysa Corven",
+    "specialty": "Archives royales",
+    "sector": "I",
+    "period": "Cycle 07",
+    "notable_works": ["Annales des Maisons Anciennes"],
+    "notes": "Historienne des dynasties disparues."
+  },
+  {
+    "name": "Darion Kel",
+    "specialty": "Agriculture ancienne",
+    "sector": "II",
+    "period": "Cycle 08",
+    "notable_works": ["Cultures Vivrières des Vallées Centrales"],
+    "notes": "Agronome des plaines du Secteur II."
+  },
+  {
+    "name": "Neris Vaul",
+    "specialty": "Étude des champignons",
+    "sector": "II",
+    "period": "Cycle 08",
+    "notable_works": ["Les Mousses et Champignons des Terres Humides"],
+    "notes": "Mycologue de terrain."
+  },
+  {
+    "name": "Oryn Calest",
+    "specialty": "Invocation théorique",
+    "sector": "III",
+    "period": "Cycle 07",
+    "notable_works": ["Bases de l'Invocation Contrôlée"],
+    "notes": "Théoricien des rituels encadrés."
+  },
+  {
+    "name": "Farel Imor",
+    "specialty": "Artefacts magiques",
+    "sector": "III",
+    "period": "Cycle 06",
+    "notable_works": ["Catalogue des Artefacts Anciens"],
+    "notes": "Documentaliste des collections arcaniques."
+  },
+  {
+    "name": "Selma Orien",
+    "specialty": "Biographies historiques",
+    "sector": "I",
+    "period": "Cycle 08",
+    "notable_works": ["Figures du Premier Royaume"],
+    "notes": "Biographe des grandes familles."
+  },
+  {
+    "name": "Varek Thol",
+    "specialty": "Conflits historiques",
+    "sector": "I",
+    "period": "Cycle 07",
+    "notable_works": ["Guerres des Frontières"],
+    "notes": "Chroniqueur militaire."
+  },
+  {
+    "name": "Ilwen Raal",
+    "specialty": "Flore magique",
+    "sector": "II",
+    "period": "Cycle 07",
+    "notable_works": ["Plantes Chargées de Mana"],
+    "notes": "Botaniste spécialisé en variétés influencées par les Courants."
+  },
+  {
+    "name": "Corvin Hale",
+    "specialty": "Archives funéraires",
+    "sector": "III",
+    "period": "Cycle 06",
+    "notable_works": ["Études des Anciennes Sépultures"],
+    "notes": "Historien des traditions mortuaires."
+  },
+  {
+    "name": "Maeron Lys",
+    "specialty": "Astronomie magique",
+    "sector": "II",
+    "period": "Cycle 07",
+    "notable_works": ["Observations Stellaires"],
+    "notes": "Astronome des observatoires du Secteur II."
+  },
+  {
+    "name": "Talia Verne",
+    "specialty": "Géographie historique",
+    "sector": "IV",
+    "period": "Cycle 08",
+    "notable_works": ["Cartes des Royaumes Perdus"],
+    "notes": "Cartographe archiviste de Hillsvaire."
+  },
+  {
+    "name": "Jorn Edris",
+    "specialty": "Rites anciens documentés",
+    "sector": "III",
+    "period": "Cycle 05",
+    "notable_works": ["Chroniques des Rites Anciens"],
+    "notes": "Érudit des pratiques funéraires historiques."
+  },
+  {
+    "name": "Arven Lior",
+    "specialty": "Conservation des manuscrits",
+    "sector": "I",
+    "period": "Cycle 08",
+    "notable_works": ["Guide du Copiste Archiviste"],
+    "notes": "Maître copiste formateur."
+  }
+]

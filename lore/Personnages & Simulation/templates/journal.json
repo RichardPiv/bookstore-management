@@ -1,0 +1,322 @@
+[
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-001",
+    "message": "{client_name} acquiert un exemplaire de « {book_title} ». La référence rejoint son dossier d'étude personnelle.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Apprenti mage"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-002",
+    "message": "{client_name} repart avec « {book_title} ». Un exemplaire courant a été retiré du rayon Arcane.",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Apprenti mage"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-003",
+    "message": "{client_name} achète « {book_title} » pour compléter ses travaux archivistiques.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Étudiant des écoles archivistiques"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-004",
+    "message": "{client_name} acquiert « {book_title} ». La transaction est enregistrée selon les normes de la Guilde.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Étudiant des écoles archivistiques"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-005",
+    "message": "{client_name} achète un exemplaire de « {book_title} ».",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Botaniste"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-006",
+    "message": "{client_name} sélectionne « {book_title} ». L'exemplaire rare a été remis avec contrôle documentaire.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Botaniste"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-007",
+    "message": "{client_name} consulte puis achète « {book_title} ».",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Érudit"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-008",
+    "message": "{client_name} complète ses recherches avec « {book_title} ».",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Érudit"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-009",
+    "message": "{client_name} acquiert « {book_title} » pour les services de la Guilde.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Fonctionnaire de la Guilde"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-010",
+    "message": "{client_name} commande plusieurs ouvrages de référence, dont « {book_title} ».",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Marchand"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-011",
+    "message": "{client_name} achète « {book_title} » avant son prochain déplacement.",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Voyageur"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-012",
+    "message": "{client_name} procède à l'acquisition institutionnelle de « {book_title} ».",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Représentant d'institution"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-013",
+    "message": "Un visiteur du Secteur III repart avec « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Apprenti mage"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-014",
+    "message": "Un chercheur local acquiert « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Botaniste"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-015",
+    "message": "Une copie de « {book_title} » quitte les rayons après validation du comptoir.",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-016",
+    "message": "Un étudiant consulte plusieurs références avant de sélectionner « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Étudiant des écoles archivistiques"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-017",
+    "message": "La Réserve enregistre une nouvelle vente dans le registre quotidien.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-018",
+    "message": "Un exemplaire certifié de « {book_title} » rejoint la collection personnelle d'un lecteur de Hillsvaire.",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-019",
+    "message": "Un marchand du Secteur II complète son inventaire documentaire avec « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Marchand"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-020",
+    "message": "Un voyageur acquiert « {book_title} » avant son départ.",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Voyageur"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-021",
+    "message": "Un représentant institutionnel récupère « {book_title} » au comptoir.",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Représentant d'institution"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-022",
+    "message": "Un apprenti mage sélectionne « {book_title} », adapté à son niveau d'étude.",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Apprenti mage"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-023",
+    "message": "Une botaniste locale renouvelle ses références avec « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Botaniste"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-024",
+    "message": "Un archiviste en formation complète son matériel d'étude avec « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Étudiant des écoles archivistiques"]
+  },
+  {
+    "event_type": "CUSTOMER_PURCHASE",
+    "template_id": "PUR-025",
+    "message": "La vente est enregistrée : un exemplaire certifié de « {book_title} » quitte officiellement La Réserve des Grimoires.",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "STOCKOUT",
+    "template_id": "STO-001",
+    "message": "Le dernier exemplaire disponible de « {book_title} » vient d'être vendu. Le rayon attend une remise en place depuis la réserve.",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "STOCKOUT",
+    "template_id": "STO-002",
+    "message": "Le stock rayon de « {book_title} » atteint zéro exemplaire.",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "STOCKOUT",
+    "template_id": "STO-003",
+    "message": "La demande récente a épuisé les exemplaires exposés de « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "STOCKOUT",
+    "template_id": "STO-004",
+    "message": "Maître Elian Voss signale une rupture temporaire concernant « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "STOCKOUT",
+    "template_id": "STO-005",
+    "message": "« {book_title} » nécessite une prochaine remise en rayon depuis la réserve.",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "SUPPLIER_DELIVERY",
+    "template_id": "DEL-001",
+    "message": "Le convoi du Dépôt Central des Copistes de Port-Aster est arrivé au Quai des Convoyeurs.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "SUPPLIER_DELIVERY",
+    "template_id": "DEL-002",
+    "message": "Maître Elian Voss valide la réception des caisses après contrôle des sceaux.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "SUPPLIER_DELIVERY",
+    "template_id": "DEL-003",
+    "message": "Corvin Hale remet le bon de livraison correspondant à l'expédition du jour.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "SUPPLIER_DELIVERY",
+    "template_id": "DEL-004",
+    "message": "Les ouvrages reçus de Port-Aster sont enregistrés puis transférés vers la réserve.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "SUPPLIER_DELIVERY",
+    "template_id": "DEL-005",
+    "message": "La livraison est conforme aux registres de commande de La Réserve.",
+    "variables": [],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "UNAVAILABLE_REQUEST",
+    "template_id": "UNA-001",
+    "message": "Un visiteur demande une référence absente du catalogue commercial actuel.",
+    "variables": [],
+    "tone": "neutral",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "UNAVAILABLE_REQUEST",
+    "template_id": "UNA-002",
+    "message": "Renald Vosmere consulte les registres afin d'identifier une source alternative pour « {book_title} ».",
+    "variables": ["book_title"],
+    "tone": "archival",
+    "linked_archetypes": ["Érudit"]
+  },
+  {
+    "event_type": "UNAVAILABLE_REQUEST",
+    "template_id": "UNA-003",
+    "message": "{client_name} recherche « {book_title} », actuellement indisponible.",
+    "variables": ["client_name", "book_title"],
+    "tone": "neutral",
+    "linked_archetypes": ["Étudiant des écoles archivistiques"]
+  },
+  {
+    "event_type": "UNAVAILABLE_REQUEST",
+    "template_id": "UNA-004",
+    "message": "La demande de {client_name} concernant « {book_title} » est enregistrée pour une éventuelle commande auprès de Port-Aster.",
+    "variables": ["client_name", "book_title"],
+    "tone": "archival",
+    "linked_archetypes": []
+  },
+  {
+    "event_type": "UNAVAILABLE_REQUEST",
+    "template_id": "UNA-005",
+    "message": "« {book_title} » n'est pas disponible dans les collections commerciales de La Réserve.",
+    "variables": ["book_title"],
+    "tone": "neutral",
+    "linked_archetypes": []
+  }
+]

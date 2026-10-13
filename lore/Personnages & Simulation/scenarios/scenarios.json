@@ -1,0 +1,82 @@
+[
+  {
+    "scenario_id": "SCN-001",
+    "title": "Le manuel d'initiation recherché",
+    "description": "Un apprenti mage recherche un manuel d'introduction adapté à son niveau. La demande concerne généralement un ouvrage courant validé par la Guilde.",
+    "likely_event_types": ["CUSTOMER_PURCHASE", "UNAVAILABLE_REQUEST"],
+    "involved_characters": ["CLI-001"],
+    "resolution_notes": "Vente si disponible, sinon attente d'approvisionnement."
+  },
+  {
+    "scenario_id": "SCN-002",
+    "title": "Le complément d'étude archivistique",
+    "description": "Un étudiant consulte plusieurs références historiques avant de choisir un ouvrage complémentaire pour ses recherches.",
+    "likely_event_types": ["CUSTOMER_PURCHASE"],
+    "involved_characters": ["CLI-003"],
+    "resolution_notes": "Achat d'un ouvrage courant d'Histoire."
+  },
+  {
+    "scenario_id": "SCN-003",
+    "title": "L'herbier spécialisé",
+    "description": "Une botaniste recherche une édition précise concernant une flore particulière.",
+    "likely_event_types": ["CUSTOMER_PURCHASE", "UNAVAILABLE_REQUEST"],
+    "involved_characters": ["CLI-006"],
+    "resolution_notes": "Achat d'un herbier disponible ou inscription d'une demande pour une édition spécialisée."
+  },
+  {
+    "scenario_id": "SCN-004",
+    "title": "La recherche historique prolongée",
+    "description": "Un chercheur compare plusieurs ouvrages avant de choisir une référence historique.",
+    "likely_event_types": ["CUSTOMER_PURCHASE"],
+    "involved_characters": ["CLI-007"],
+    "resolution_notes": "Consultation puis acquisition."
+  },
+  {
+    "scenario_id": "SCN-005",
+    "title": "La commande administrative",
+    "description": "Un agent administratif recherche plusieurs exemplaires identiques pour un service interne de la Guilde.",
+    "likely_event_types": ["CUSTOMER_PURCHASE", "STOCKOUT"],
+    "involved_characters": ["CLI-009"],
+    "resolution_notes": "Vente immédiate si stock suffisant ; rupture si la quantité demandée dépasse le rayon."
+  },
+  {
+    "scenario_id": "SCN-006",
+    "title": "L'achat professionnel d'un marchand",
+    "description": "Une négociante cherche plusieurs ouvrages pratiques pour enrichir son comptoir documentaire.",
+    "likely_event_types": ["CUSTOMER_PURCHASE"],
+    "involved_characters": ["CLI-010"],
+    "resolution_notes": "Vente de plusieurs ouvrages courants."
+  },
+  {
+    "scenario_id": "SCN-007",
+    "title": "La préparation d'un voyage",
+    "description": "Un voyageur souhaite obtenir des références compactes avant son départ.",
+    "likely_event_types": ["CUSTOMER_PURCHASE"],
+    "involved_characters": ["CLI-011"],
+    "resolution_notes": "Achat d'un guide ou d'un ouvrage historique."
+  },
+  {
+    "scenario_id": "SCN-008",
+    "title": "L'acquisition institutionnelle",
+    "description": "Une institution commande un exemplaire certifié pour enrichir ses propres archives.",
+    "likely_event_types": ["CUSTOMER_PURCHASE", "SUPPLIER_DELIVERY"],
+    "involved_characters": ["CLI-012"],
+    "resolution_notes": "Préparation spéciale ou livraison ultérieure."
+  },
+  {
+    "scenario_id": "SCN-009",
+    "title": "La référence introuvable",
+    "description": "Un client présente un titre approximatif ou une ancienne appellation non reconnue dans le catalogue actuel.",
+    "likely_event_types": ["UNAVAILABLE_REQUEST"],
+    "involved_characters": [],
+    "resolution_notes": "Recherche dans les registres, proposition d'un titre proche ou absence confirmée."
+  },
+  {
+    "scenario_id": "SCN-010",
+    "title": "Le réapprovisionnement attendu",
+    "description": "Une référence régulièrement demandée nécessite une nouvelle arrivée depuis Port-Aster.",
+    "likely_event_types": ["STOCKOUT", "SUPPLIER_DELIVERY"],
+    "involved_characters": ["NPC-001"],
+    "resolution_notes": "Commande auprès du Dépôt Central puis réception après délai logistique."
+  }
+]

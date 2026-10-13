@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Registres de Port-Aster",
+    "publisher": "Dépôt Central des Copistes de Port-Aster",
+    "sector": "II",
+    "specialty": "Histoire locale et administration",
+    "example_titles": ["Chroniques Civiles", "Registre des Quartiers Septentrionaux"]
+  },
+  {
+    "name": "Herbiers du Cercle Vert",
+    "publisher": "Maison des Encres Sylvestres",
+    "sector": "II",
+    "specialty": "Botanique pratique",
+    "example_titles": ["Herbier des Plantes Communes du Secteur IV", "Flora de l'Abîme"]
+  },
+  {
+    "name": "Études de la Trame",
+    "publisher": "Collège des Théoriciens de la Trame",
+    "sector": "III",
+    "specialty": "Théorie magique",
+    "example_titles": ["Introduction aux Principes de la Trame", "Les Quatre Forces et leurs Interactions"]
+  },
+  {
+    "name": "Archives des Anciens Cycles",
+    "publisher": "Archives Mondiales de Hillsvaire",
+    "sector": "IV",
+    "specialty": "Histoire ancienne",
+    "example_titles": ["Chroniques des Royaumes Disparus", "Mémoire du Troisième Cycle"]
+  },
+  {
+    "name": "Guides de l'Explorateur",
+    "publisher": "Atelier des Cartographes Réunis",
+    "sector": "IV",
+    "specialty": "Voyages et survie",
+    "example_titles": ["Notes de Voyageur", "Routes des Terres Désolées"]
+  },
+  {
+    "name": "Traités de la Trame Moderne",
+    "publisher": "Institut de Recherche du Secteur III",
+    "sector": "III",
+    "specialty": "Théories contemporaines",
+    "example_titles": ["Les Résonances de la Trame Profonde", "La Grande Classification des Phénomènes de la Trame"]
+  },
+  {
+    "name": "Cartographies Célestes",
+    "publisher": "Archives Astrales de Hillsvaire",
+    "sector": "IV",
+    "specialty": "Astronomie et cartographie",
+    "example_titles": ["Anatomie Céleste", "Observations Stellaires"]
+  },
+  {
+    "name": "Archives de la Convergence",
+    "publisher": "Archives Mondiales du Secteur IV",
+    "sector": "IV",
+    "specialty": "Événements magiques majeurs",
+    "example_titles": ["L'Oeil de l'Éclipse", "Archives de la Grande Convergence"]
+  }
+]

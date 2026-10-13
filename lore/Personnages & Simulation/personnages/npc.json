@@ -1,0 +1,68 @@
+[
+  {
+    "id": "NPC-001",
+    "name": "Maître Elian Voss",
+    "role": "Commis réceptionnaire de La Réserve des Grimoires",
+    "institution": "Archives Mondiales du Secteur IV",
+    "origin_sector": "IV",
+    "simulation_role": "Contrôle des arrivages, validation des bons de livraison",
+    "personality_traits": ["précis", "méthodique"],
+    "event_types": ["SUPPLIER_DELIVERY", "STOCKOUT"],
+    "typical_line": "Les sceaux correspondent au registre, la livraison peut être enregistrée."
+  },
+  {
+    "id": "NPC-002",
+    "name": "Sœur Maëline",
+    "role": "Relieuse et restauratrice",
+    "institution": "Atelier de reliure des Archives Mondiales",
+    "origin_sector": "IV",
+    "simulation_role": "Vérification physique des ouvrages, entretien des exemplaires",
+    "personality_traits": ["calme", "attentive"],
+    "event_types": ["STOCKOUT", "SUPPLIER_DELIVERY"],
+    "typical_line": "La reliure est intacte, l'exemplaire peut rejoindre les rayons."
+  },
+  {
+    "id": "NPC-003",
+    "name": "Corvin Hale",
+    "role": "Convoyeur certifié de la Guilde",
+    "institution": "Compagnie des Convoyeurs Certifiés",
+    "origin_sector": "II",
+    "simulation_role": "Transport des caisses depuis Port-Aster",
+    "personality_traits": ["fiable", "discret"],
+    "event_types": ["SUPPLIER_DELIVERY"],
+    "typical_line": "Le convoi du Dépôt Central est arrivé sans incident sur le trajet."
+  },
+  {
+    "id": "NPC-004",
+    "name": "Ilyan Meros",
+    "role": "Représentant du Dépôt Central des Copistes",
+    "institution": "Dépôt Central des Copistes de Port-Aster",
+    "origin_sector": "II",
+    "simulation_role": "Confirmation des expéditions et disponibilité des ouvrages",
+    "personality_traits": ["commercial", "organisé"],
+    "event_types": ["SUPPLIER_DELIVERY", "UNAVAILABLE_REQUEST"],
+    "typical_line": "Votre prochaine expédition sera préparée selon les registres transmis."
+  },
+  {
+    "id": "NPC-005",
+    "name": "Archiviste Lysa Corven",
+    "role": "Fonctionnaire de suivi documentaire",
+    "institution": "Guilde des Archivistes de Sim",
+    "origin_sector": "IV",
+    "simulation_role": "Vérification administrative exceptionnelle",
+    "personality_traits": ["sérieuse", "diplomate"],
+    "event_types": ["CUSTOMER_PURCHASE", "STOCKOUT", "SUPPLIER_DELIVERY", "UNAVAILABLE_REQUEST"],
+    "typical_line": "La demande est conforme aux procédures de la Guilde."
+  },
+  {
+    "id": "NPC-006",
+    "name": "Maître Renald Vosmere",
+    "role": "Érudit consultant itinérant",
+    "institution": "Cercle des Études Historiques",
+    "origin_sector": "I",
+    "simulation_role": "Demandes spécialisées et consultations",
+    "personality_traits": ["patient", "exigeant"],
+    "event_types": ["UNAVAILABLE_REQUEST", "CUSTOMER_PURCHASE"],
+    "typical_line": "Un ouvrage absent aujourd'hui pourra peut-être être retrouvé dans les registres."
+  }
+]

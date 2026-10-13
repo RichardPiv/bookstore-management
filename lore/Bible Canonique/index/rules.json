@@ -1,0 +1,86 @@
+[
+  {
+    "rule_id": "RULE-001",
+    "statement": "Un nom propre correspond à une seule entité canonique (lieu, personnage, ouvrage ou institution).",
+    "scope": "global",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-002",
+    "statement": "Toute modification majeure du canon nécessite une mise à jour du document fondateur concerné, de la Bible et un incrément de version.",
+    "scope": "global",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-003",
+    "statement": "Les documents fondateurs spécialisés restent propriétaires de leur domaine ; la Bible arbitre les relations entre documents sans les remplacer.",
+    "scope": "global",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-004",
+    "statement": "Tout nouvel ouvrage catalogue possède un identifiant unique au format HIS-NNN, BOT-NNN, ARC-NNN ou NEC-NNN — jamais BOOK-NNN.",
+    "scope": "catalogue",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-005",
+    "statement": "Une collection éditoriale (COL-NNN) n'est jamais un titre de livre ; les champs de simulation référencent des IDs catalogue réels.",
+    "scope": "catalogue",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-006",
+    "statement": "Les raretés applicatives commerciales sont limitées à common, uncommon, rare, legendary et mythic ; sealed est hors vente.",
+    "scope": "catalogue",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-007",
+    "statement": "Les événements de simulation MVP utilisent uniquement CUSTOMER_PURCHASE, STOCKOUT, SUPPLIER_DELIVERY et UNAVAILABLE_REQUEST.",
+    "scope": "simulation",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-008",
+    "statement": "Aucun livre ne possède de pouvoir magique intrinsèque ; les grimoires sont des documents de savoir certifié.",
+    "scope": "univers",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-009",
+    "statement": "Tout nouveau personnage doit préciser fonction, institution, statut et identifiant (CLI, NPC ou dédié).",
+    "scope": "simulation",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-010",
+    "statement": "Les extensions documentaires utilisent un versioning explicite (correction mineure +0.1, changement structurel +1.0).",
+    "scope": "documentation",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-011",
+    "statement": "Les brouillons et archives old/ ne constituent jamais une source canonique active ; le canon vit dans lore/ (documents fondateurs + JSON).",
+    "scope": "documentation",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  },
+  {
+    "rule_id": "RULE-012",
+    "statement": "Toute évolution applicative doit vérifier l'alignement avec le lore avant intégration.",
+    "scope": "global",
+    "source": "Bible Canonique v1.0 §11",
+    "enforcement": "blocking"
+  }
+]

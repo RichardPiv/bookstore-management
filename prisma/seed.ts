@@ -25,7 +25,7 @@ import bcrypt from "bcryptjs";
 import { Prisma, PrismaClient } from "../lib/generated/prisma/client";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const loreRoot = join(__dirname, "..", "..", "Lore & univers");
+const loreRoot = join(__dirname, "..", "lore");
 const catalogueDir = join(loreRoot, "Catalogue de Grimoires", "catalogue");
 
 const CATEGORIES = [

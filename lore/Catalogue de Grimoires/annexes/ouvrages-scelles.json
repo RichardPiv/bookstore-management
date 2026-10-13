@@ -1,0 +1,58 @@
+[
+  {
+    "id": "SCELL-001",
+    "title": "Le Testament du Premier Archiviste",
+    "category": "Archives scellées",
+    "classification": "Historique restreint",
+    "author": "Premier Archiviste inconnu",
+    "period": "Cycle 01",
+    "origin_sector": "I",
+    "format": "manuscrit relié",
+    "security_level": "III",
+    "description": "Texte fondateur relatant les premières règles de conservation des connaissances.",
+    "reason_sealed": "Contient des informations sur les structures originelles de la Guilde.",
+    "lore_hook": "Conservé comme référence historique mais inaccessible au public."
+  },
+  {
+    "id": "SCELL-002",
+    "title": "Le Codex des Portes Sans Retour",
+    "category": "Archives scellées",
+    "classification": "Phénomène interdit",
+    "author": "Collectif des Veilleurs du Seuil",
+    "period": "Cycle 04",
+    "origin_sector": "III",
+    "format": "codex fragmentaire",
+    "security_level": "IV",
+    "description": "Compilation d'études sur les passages instables entre plans.",
+    "reason_sealed": "Certaines observations décrivent des phénomènes impossibles à reproduire.",
+    "lore_hook": "Consulté uniquement lors des enquêtes majeures de la Guilde."
+  },
+  {
+    "id": "SCELL-003",
+    "title": "Les Chroniques de la Dernière Nuit",
+    "category": "Archives scellées",
+    "classification": "Catastrophe historique",
+    "author": "Archivistes du Troisième Cycle",
+    "period": "Cycle 06",
+    "origin_sector": "IV",
+    "format": "registre d'urgence",
+    "security_level": "III",
+    "description": "Rapport complet sur un événement ayant marqué la fin d'une époque.",
+    "reason_sealed": "Présente des informations sensibles sur les conséquences de la catastrophe.",
+    "lore_hook": "Document utilisé pour comparer les crises anciennes aux phénomènes actuels."
+  },
+  {
+    "id": "SCELL-004",
+    "title": "Le Livre des Noms Effacés",
+    "category": "Archives scellées",
+    "classification": "Mémoire interdite",
+    "author": "Auteur inconnu",
+    "period": "Cycle 05",
+    "origin_sector": "IV",
+    "format": "registre funéraire",
+    "security_level": "V",
+    "description": "Liste ancienne de noms liés à des événements oubliés.",
+    "reason_sealed": "La Guilde interdit la diffusion publique de son contenu.",
+    "lore_hook": "Protégé dans les chambres profondes des archives."
+  }
+]
